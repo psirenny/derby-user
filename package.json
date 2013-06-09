@@ -14,7 +14,10 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "repository": "",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/psirenny/derby-user.git"
+  },
   "keywords": [
     "derby",
     "user",
@@ -22,5 +25,11 @@
     "management"
   ],
   "author": "psirenny",
-  "license": "BSD"
+  "license": "BSD",
+  "readmeFilename": "README.md",
+  "gitHead": "fa38152a84166295e6fbdd6a851e4a3d85624be8",
+  "devDependencies": {},
+  "bugs": {
+    "url": "https://github.com/psirenny/derby-user/issues"
+  }
 }
