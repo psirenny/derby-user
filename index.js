@@ -71,7 +71,7 @@ module.exports = function (app, options) {
         minimumLength: 6,
         path: 'private.local.password'
       },
-    }
+    },
     providers: {
       schema: {
         'public': ['displayName', 'username'],
