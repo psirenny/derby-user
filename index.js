@@ -58,8 +58,8 @@ module.exports = function (app, options) {
       'public',
       'private'
     ],
+    clientConfigPath: '$auth',
     collectionName: 'users',
-    configPath: '$auth',
     findUserId: [
       'private.local.email',
       'public.local.username'
@@ -221,8 +221,8 @@ module.exports = function (app, options) {
         }
 
         model.set('_session.' + options.session.idPath, userId);
-        model.set(options.configPath + '.accessLevels', options.accessLevels);
-        model.set(options.configPath + '.session', options.session);
+        model.set(options.clientConfigPath + '.accessLevels', options.accessLevels);
+        model.set(options.clientConfigPath + '.session', options.session);
         next();
       };
     },
