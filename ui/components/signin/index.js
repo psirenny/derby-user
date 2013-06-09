@@ -9,7 +9,7 @@ exports.create = function (model, dom) {
     $(form).ajaxForm({
       success: function (data) {
         var root = model.parent().parent()
-          , config = root.get(this.model.get('config') || '$auth');
+          , config = root.get(model.get('config') || '$auth');
 
         root.set('_session.' + config.session.idPath, data.id);
         root.set('_session.' + config.session.isRegisteredPath, data.isRegistered);
