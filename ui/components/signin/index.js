@@ -1,5 +1,5 @@
 exports.create = function (model, dom) {
-  var form = this.form = dom.element(model.get('form') || 'form');
+  var form = this.form = dom.element(model.get('form') || 'form')
   if (!$) require('../../vendor/jquery.min.js');
   if (!$.fn.ajaxForm) require('../../vendor/jquery.form.min.js');
   if (!$.fn.popupWindow) require('../../vendor/jquery.popupWindow.min.js');
@@ -7,9 +7,13 @@ exports.create = function (model, dom) {
 
   $(function () {
     $(form).ajaxForm({
-      method: 'post',
-      url: model.get('url') || '/signin',
-      xhrFields: {withCredentials: true}
+      success: function (data) {
+        var root = model.parent().parent()
+          , config = root.get(this.model.get('config') || '$auth');
+
+        root.set('_session.' + config.session.idPath, data.id);
+        root.set('_session.' + config.session.isRegisteredPath, data.isRegistered);
+      }
     });
   });
 };

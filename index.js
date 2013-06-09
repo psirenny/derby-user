@@ -3,7 +3,6 @@ var _ = require('lodash')
   , async = require('async')
   , dotty = require('dotty')
   , passport = require('passport')
-  , FacebookStrategy = require('passport-facebook').Strategy
   , passwordHash = require('password-hash');
 
 module.exports = function (app, options) {
@@ -40,7 +39,7 @@ module.exports = function (app, options) {
       var query = model.query(coll, target);
 
       model.fetch(query, function (err) {
-        if (err) return callback(null);
+        if (err) return callback(err);
         var userId = dotty.get(query.get(), '0.id');
         if (userId) found = userId;
         callback(userId);
@@ -51,12 +50,13 @@ module.exports = function (app, options) {
   };
 
   var getCollection = function (lvl) {
-    return options.collectionName + _s.capitalize(lvl);
+    return options.collectionName + (lvl ? _s.capitalize(lvl) : '');
   };
 
   options = _.merge(options || {}, {
     accessLevels: ['public', 'private'],
     collectionName: 'users',
+    configPath: '$auth',
     findUserId: ['private.local.email', 'public.local.username'],
     password: {
       hash: {},
@@ -216,6 +216,8 @@ module.exports = function (app, options) {
         }
 
         model.set('_session.' + options.session.idPath, userId);
+        model.set(options.configPath + '.accessLevels', options.accessLevels);
+        model.set(options.configPath + '.session', options.session);
         next();
       };
     },
@@ -259,12 +261,9 @@ module.exports = function (app, options) {
 
           var success = function () {
             dotty.put(req.session, options.session.idPath, userId);
-            req.session.save();
-            res.header('Access-Control-Allow-Credentials', 'true');
-            res.writeHead(200);
             model.set('_session.' + options.session.idPath, userId);
             model.set('_session.' + options.session.isRegisteredPath, true);
-            return res.send();
+            return res.send({id: userId, isRegistered: true});
           }
 
           if (err) return failure(err);
@@ -277,7 +276,6 @@ module.exports = function (app, options) {
 
           part.fetch(function (err) {
             if (err) return failure(err);
-
             var dbPass = part.get(path);
 
             if (options.password.hash) {

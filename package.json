@@ -4,7 +4,7 @@
     "dotty": "*",
     "lodash": "*",
     "passport": "*",
-    "passwordHash": "*",
+    "password-hash": "*",
     "underscore.string": "*"
   },
   "name": "derby-user",
