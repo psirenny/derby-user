@@ -21,13 +21,13 @@ module.exports = function (app, options) {
   };
 
   var findUserId = function (model, user, callback) {
-    if (_.isFunction(options.findUserId)) {
-      return options.findUserId(model, user, callback);
+    if (_.isFunction(options.local.findUserId)) {
+      return options.local.findUserId(model, user, callback);
     }
 
     var found = null;
 
-    async.some(options.findUserId, function (path, callback) {
+    async.some(options.local.findUserId, function (path, callback) {
       path = path.split('.');
 
       var val = dotty.get(user, path)
@@ -60,21 +60,24 @@ module.exports = function (app, options) {
     ],
     clientConfigPath: '$auth',
     collectionName: 'users',
-    findUserId: [
-      'private.local.email',
-      'public.local.username'
-    ],
-    password: {
-      hash: {},
-      maximumLength: 100,
-      minimumLength: 6,
-      path: 'private.local.password'
-    },
+    local: {
+      findUserId: [
+        'private.local.email',
+        'public.local.username'
+      ],
+      password: {
+        hash: {},
+        maximumLength: 100,
+        minimumLength: 6,
+        path: 'private.local.password'
+      },
+    }
     providers: {
       schema: {
         'public': ['displayName', 'username'],
         'private': '*'
       },
+      strategies: {},
       path: 'providers'
     },
     session: {
@@ -83,12 +86,11 @@ module.exports = function (app, options) {
     },
     signInRoute: '/signin',
     signOutRoute: '/signout',
-    signUpRoute: '/signup',
-    strategies: {}
+    signUpRoute: '/signup'
   });
 
-  if (_.isString(options.findUserId)) {
-    options.findUserId = [options.findUserId];
+  if (_.isString(options.local.findUserId)) {
+    options.local.findUserId = [options.local.findUserId];
   }
 
   if (!options.accessLevels) {
@@ -101,7 +103,7 @@ module.exports = function (app, options) {
     if (_.isString(schema[lvl])) schema[lvl] = [schema[lvl]];
   });
 
-  _.each(options.strategies, function (strategy, name) {
+  _.each(options.providers.strategies, function (strategy, name) {
     _.merge(strategy, {
       callback: {
         popup: true,
@@ -140,7 +142,7 @@ module.exports = function (app, options) {
         return done(null, {id: userId});
       });
 
-      _.each(options.strategies, function (strategy, name) {
+      _.each(options.providers.strategies, function (strategy, name) {
         var Strategy = require(strategy.module).Strategy;
 
         passport.use(new Strategy(strategy.config, strategy.verify(
@@ -227,7 +229,7 @@ module.exports = function (app, options) {
       };
     },
     routes: function () {
-      _.each(options.strategies, function (strategy, name) {
+      _.each(options.providers.strategies, function (strategy, name) {
         app.get(strategy.options.url, passport.authenticate(name, strategy.options));
 
         app.get(strategy.callback.url, passport.authenticate(name, strategy.callback), function (req, res) {
@@ -256,7 +258,7 @@ module.exports = function (app, options) {
       app.post(options.signInRoute, function (req, res) {
         var model = req.getModel()
           , user = assembleUser(req.body)
-          , pass = dotty.get(user, options.password.path);
+          , pass = dotty.get(user, options.local.password.path);
 
         findUserId(model, user, function (err, userId) {
           var failure = function (err) {
@@ -273,17 +275,17 @@ module.exports = function (app, options) {
 
           if (err) return failure(err);
           if (!userId) return failure();
-          if (!options.password) return success();
+          if (!options.local.password) return success();
 
-          var coll = getCollection(options.password.path.split('.')[0])
+          var coll = getCollection(options.local.password.path.split('.')[0])
             , part = model.at(coll + '.' + userId)
-            , path = options.password.path.split('.').slice(1).join('.')
+            , path = options.local.password.path.split('.').slice(1).join('.')
 
           part.fetch(function (err) {
             if (err) return failure(err);
             var dbPass = part.get(path);
 
-            if (options.password.hash) {
+            if (options.local.password.hash) {
               return passwordHash.verify(pass, dbPass) ? success() : failure();
             }
 
@@ -305,11 +307,11 @@ module.exports = function (app, options) {
           , user = assembleUser(req.body)
           , userId = dotty.get(req.session, options.session.idPath);
 
-        if (options.password && options.password.hash) {
-          var pass = dotty.get(user, options.password.path)
-            , hash = passwordHash.generate(pass, options.password.hash);
+        if (options.local.password && options.local.password.hash) {
+          var pass = dotty.get(user, options.local.password.path)
+            , hash = passwordHash.generate(pass, options.local.password.hash);
 
-          dotty.put(user, options.password.path, hash);
+          dotty.put(user, options.local.password.path, hash);
         }
 
         _.each(options.accessLevels, function (lvl) {
