@@ -54,10 +54,16 @@ module.exports = function (app, options) {
   };
 
   options = _.merge(options || {}, {
-    accessLevels: ['public', 'private'],
+    accessLevels: [
+      'public',
+      'private'
+    ],
     collectionName: 'users',
     configPath: '$auth',
-    findUserId: ['private.local.email', 'public.local.username'],
+    findUserId: [
+      'private.local.email',
+      'public.local.username'
+    ],
     password: {
       hash: {},
       maximumLength: 100,
@@ -65,7 +71,7 @@ module.exports = function (app, options) {
       path: 'private.local.password'
     },
     providers: {
-      access: {
+      schema: {
         'public': ['displayName', 'username'],
         'private': '*'
       },
@@ -90,9 +96,9 @@ module.exports = function (app, options) {
   }
 
   _.each(options.accessLevels, function (lvl) {
-    var access = options.providers.access;
-    if (!access[lvl]) access[lvl] = [];
-    if (_.isString(access[lvl])) access[lvl] = [access[lvl]];
+    var schema = options.providers.schema;
+    if (!schema[lvl]) schema[lvl] = [];
+    if (_.isString(schema[lvl])) schema[lvl] = [schema[lvl]];
   });
 
   _.each(options.strategies, function (strategy, name) {
@@ -166,16 +172,15 @@ module.exports = function (app, options) {
                     part.set('registered', true);
                     prov.set('id', profileId)
 
-                    _.each(options.providers.access[lvl], function (access) {
-                      if (access === '*') {
+                    _.each(options.providers.schema[lvl], function (path) {
+                      if (path === '*') {
                         prov.set(profile);
                         profile = {};
                       } else {
-                        var val = dotty.get(profile, access);
-                        if (val) {
-                          prov.set(access, val);
-                          dotty.remove(profile, access);
-                        }
+                        var val = dotty.get(profile, path);
+                        if (!val) return;
+                        prov.set(path, val);
+                        dotty.remove(profile, path);
                       }
                     });
                   });
