@@ -5,10 +5,12 @@ exports.create = function (model, dom) {
   if (!form) return console.error('must specifiy form element (i.e. <form x-as="form">...</form>');
 
   $(function () {
-    $(form).ajaxForm({
-      method: 'post',
-      url: model.get('url') || '/signup',
-      xhrFields: {withCredentials: true}
-    });
+    $(form).ajaxForm();
   });
+};
+
+exports.provider = function (e, el) {
+  e.preventDefault();
+  if (!el.href) return console.error('must specify a provider url (i.e. <a href="/signin/provider">...</a>');
+  $.popupWindow(el.href);
 };
