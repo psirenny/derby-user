@@ -31,7 +31,7 @@ module.exports = function (app, options) {
       path = path.split('.');
 
       var val = dotty.get(user, path)
-        , coll = getCollection(path.shift())
+        , coll = getUserCollection(path.shift())
         , doc = path.join('.')
         , target = {$query: {}};
 
@@ -49,8 +49,9 @@ module.exports = function (app, options) {
     });
   };
 
-  var getCollection = function (lvl) {
-    return options.collectionName + (lvl ? _s.capitalize(lvl) : '');
+  var getUserCollection = function (lvl) {
+    if (!lvl) lvl = options.accessLevels[0];
+    return options.collectionName + _s.capitalize(lvl);
   };
 
   options = _.merge(options || {}, {
@@ -74,7 +75,7 @@ module.exports = function (app, options) {
     },
     providers: {
       schema: {
-        'public': ['displayName', 'username'],
+        'public': ['displayName', 'photos', 'username'],
         'private': '*'
       },
       strategies: {},
@@ -149,7 +150,7 @@ module.exports = function (app, options) {
           function (req, profileId, profile, done) {
             var model = req.getModel()
               , target = {$query: {}}
-              , coll = getCollection(options.accessLevels[0])
+              , coll = getUserCollection(options.accessLevels[0])
               , doc = options.providers.path + '.' + name + '.id'
               , query = model.query(coll, target)
               , userId = model.get('_session.' + options.session.idPath);
@@ -158,36 +159,32 @@ module.exports = function (app, options) {
 
             model.fetch(query, function (err) {
               if (err) return done(err);
-              var foundUser = dotty.get(query.get(), '0');
+              userId = dotty.get(query.get(), '0.id') || userId;
 
-              if (foundUser) {
-                userId = foundUser.id;
-              } else {
-                _.each(options.accessLevels, function (lvl) {
-                  var coll = getCollection(lvl)
-                    , part = model.at(coll + '.' + userId)
-                    , prov = part.at(options.providers.path + '.' + name);
+              _.each(options.accessLevels, function (lvl) {
+                var coll = getUserCollection(lvl)
+                  , part = model.at(coll + '.' + userId)
+                  , prov = part.at(options.providers.path + '.' + name);
 
-                  part.fetch(function (err) {
-                    if (err) return done(err);
-                    part.set('id', userId);
-                    part.set('registered', true);
-                    prov.set('id', profileId)
+                part.fetch(function (err) {
+                  if (err) return done(err);
+                  part.set('id', userId);
+                  part.set('registered', true);
+                  prov.set('id', profileId)
 
-                    _.each(options.providers.schema[lvl], function (path) {
-                      if (path === '*') {
-                        prov.set(profile);
-                        profile = {};
-                      } else {
-                        var val = dotty.get(profile, path);
-                        if (!val) return;
-                        prov.set(path, val);
-                        dotty.remove(profile, path);
-                      }
-                    });
+                  _.each(options.providers.schema[lvl], function (path) {
+                    if (path === '*') {
+                      prov.set(profile);
+                      profile = {};
+                    } else {
+                      var val = dotty.get(profile, path);
+                      if (!val) return;
+                      prov.set(path, val);
+                      dotty.remove(profile, path);
+                    }
                   });
                 });
-              }
+              });
 
               model.set('_session.' + options.session.idPath, userId);
               model.set('_session.' + options.session.isRegisteredPath, true);
@@ -204,19 +201,19 @@ module.exports = function (app, options) {
           , userId = dotty.get(req.session, options.session.idPath);
 
         if (userId) {
-          var coll = getCollection(options.accessLevels[0])
+          var coll = getUserCollection(options.accessLevels[0])
             , part = model.at(coll + '.' + userId);
 
           part.fetch(function (err) {
             if (err) return next(err);
-            model.set('_session.' + options.session.isRegisteredPath, true);
+            model.set('_session.' + options.session.isRegisteredPath, part.get('registered'));
           });
         } else {
           userId = model.id();
           dotty.put(req.session, options.session.idPath, userId);
 
           _.each(options.accessLevels, function (lvl) {
-            model.add(getCollection(lvl), {id: userId, registered: false});
+            model.add(getUserCollection(lvl), {id: userId, registered: false});
           });
 
           model.set('_session.' + options.session.isRegisteredPath, false);
@@ -225,11 +222,13 @@ module.exports = function (app, options) {
         model.set('_session.' + options.session.idPath, userId);
         model.set(options.clientConfigPath + '.accessLevels', options.accessLevels);
         model.set(options.clientConfigPath + '.session', options.session);
+        model.set(options.clientConfigPath + '.signOutRoute', options.signOutRoute);
         next();
       };
     },
     routes: function () {
       _.each(options.providers.strategies, function (strategy, name) {
+
         app.get(strategy.options.url, passport.authenticate(name, strategy.options));
 
         app.get(strategy.callback.url, passport.authenticate(name, strategy.callback), function (req, res) {
@@ -277,7 +276,7 @@ module.exports = function (app, options) {
           if (!userId) return failure();
           if (!options.local.password) return success();
 
-          var coll = getCollection(options.local.password.path.split('.')[0])
+          var coll = getUserCollection(options.local.password.path.split('.')[0])
             , part = model.at(coll + '.' + userId)
             , path = options.local.password.path.split('.').slice(1).join('.')
 
@@ -294,15 +293,27 @@ module.exports = function (app, options) {
         });
       });
 
+      app.post(options.signOutRoute, function (req, res) {
+        var model = req.getModel()
+          , userId = dotty.get(req.session, options.session.idPath)
+          , user = model.at(getUserCollection() + '.' + userId);
+
+        user.fetch(function (err) {
+          if (err) return res.send(500, {err: err});
+          if (!user.get('registered')) return res.send(400, {error: 'already signed out'});
+          var userId = model.id();
+          dotty.put(req.session, options.session.idPath, userId);
+
+          _.each(options.accessLevels, function (lvl) {
+            model.add(getUserCollection(lvl), {id: userId, registered: false});
+          });
+
+          model.set('_session.' + options.session.isRegisteredPath, false);
+          return res.send({id: userId});
+        });
+      });
+
       app.post(options.signUpRoute, function (req, res) {
-        var error = function (err) {
-          return res.send();
-        };
-
-        var success = function () {
-          return res.send();
-        };
-
         var model = req.getModel()
           , user = assembleUser(req.body)
           , userId = dotty.get(req.session, options.session.idPath);
@@ -311,20 +322,21 @@ module.exports = function (app, options) {
           var pass = dotty.get(user, options.local.password.path)
             , hash = passwordHash.generate(pass, options.local.password.hash);
 
+          // replace user password with hashed password
           dotty.put(user, options.local.password.path, hash);
         }
 
         _.each(options.accessLevels, function (lvl) {
-          var part = model.at(getCollection(lvl) + '.' + userId);
+          var part = model.at(getUserCollection(lvl) + '.' + userId);
 
           part.fetch(function (err) {
-            if (err) return error(err);
+            if (err) return res.send(500, {error: err});
             var obj = _.merge(part.get(), user[lvl], {registered: true});
             part.set(obj);
           });
         });
 
-        return success();
+        return res.send();
       });
 
       return function (req, res, next) {
