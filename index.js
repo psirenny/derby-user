@@ -337,7 +337,7 @@ module.exports = function (app, options) {
           });
         });
 
-        return res.send();
+        return res.send({id: userId});
       });
 
       return function (req, res, next) {

@@ -6,7 +6,15 @@ exports.create = function (model, dom) {
   if (!form) return console.error('must specifiy form element (i.e. <form x-as="form">...</form>');
 
   $(function () {
-    $(form).ajaxForm();
+    $(form).ajaxForm({
+      success: function (data) {
+        var root = model.parent().parent()
+          , config = root.get(model.get('config') || '$auth');
+
+        root.set('_session.' + config.session.idPath, data.id);
+        root.set('_session.' + config.session.isRegisteredPath, true);
+      }
+    });
   });
 };
 
