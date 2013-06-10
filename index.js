@@ -49,6 +49,14 @@ module.exports = function (app, options) {
     });
   };
 
+  var remindUser = function (mode, user, callback) {
+    if (_.isFunction(options.local.remindUser)) {
+      return options.local.remindUser(model, user, callback);
+    }
+
+    console.log('unimplemented');
+  };
+
   var getUserCollection = function (lvl) {
     if (!lvl) lvl = options.accessLevels[0];
     return options.collectionName + _s.capitalize(lvl);
@@ -59,8 +67,12 @@ module.exports = function (app, options) {
       'public',
       'private'
     ],
-    clientConfigPath: '$auth',
+    clientConfig: {
+      path: '$auth',
+      pick: ['accessLevels', 'forgotRoute', 'session', 'signInRoute', 'signOutRoute']
+    },
     collectionName: 'users',
+    forgotRoute: '/forgot',
     local: {
       findUserId: [
         'private.local.email',
@@ -221,9 +233,15 @@ module.exports = function (app, options) {
         }
 
         model.set('_session.' + options.session.idPath, userId);
-        model.set(options.clientConfigPath + '.accessLevels', options.accessLevels);
-        model.set(options.clientConfigPath + '.session', options.session);
-        model.set(options.clientConfigPath + '.signOutRoute', options.signOutRoute);
+
+        // pass configuration to the client
+        // can be used by components (signin, signup, etc.)
+        if (options.clientConfig) {
+          _.each(_.pick(options, options.clientConfig.pick), function (val, key) {
+            model.set(options.clientConfig.path + '.' + key, val);
+          });
+        }
+
         next();
       };
     },
@@ -252,6 +270,22 @@ module.exports = function (app, options) {
           );
 
           res.send(script);
+        });
+      });
+
+      app.post(options.forgotRoute, function (req, res) {
+        var model = req.getModel()
+          , user = assembleUser(req.body)
+          , pass = dotty.get(user, options.local.password.path);
+
+        findUserId(model, user, function (err, userId) {
+          if (err) return res.send(500, {error: err});
+          if (!userId) return res.send(404, {error: 'user not found'});
+
+          remindUser(user, function (err) {
+            if (err) return res.send(500, {error: err});
+            return res.send();
+          });
         });
       });
 
