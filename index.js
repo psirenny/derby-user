@@ -262,8 +262,7 @@ module.exports = function (app, options) {
 
         findUserId(model, user, function (err, userId) {
           var failure = function (err) {
-            if (err) console.error(err);
-            return res.send();
+            return res.send(400, {error: err});
           }
 
           var success = function () {
