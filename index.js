@@ -75,7 +75,7 @@ module.exports = function (app, options) {
     },
     providers: {
       schema: {
-        'public': ['displayName', 'photos', 'username'],
+        'public': ['_json.picture', 'displayName', 'photos', 'username'],
         'private': '*'
       },
       strategies: {},
@@ -112,6 +112,7 @@ module.exports = function (app, options) {
       },
       config: {},
       module: 'passport-' + name,
+      name: 'Strategy',
       options: {
         url: '/auth/' + name
       },
@@ -125,7 +126,7 @@ module.exports = function (app, options) {
           callback(req, profileId, profile, done);
         };
       }
-    }, strategy);
+    }, _.defaults);
 
     strategy.config.passReqToCallback = true;
   });
@@ -144,7 +145,7 @@ module.exports = function (app, options) {
       });
 
       _.each(options.providers.strategies, function (strategy, name) {
-        var Strategy = require(strategy.module).Strategy;
+        var Strategy = require(strategy.module)[strategy.name];
 
         passport.use(new Strategy(strategy.config, strategy.verify(
           function (req, profileId, profile, done) {
