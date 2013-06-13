@@ -5,6 +5,8 @@
     "lodash": "*",
     "passport": "*",
     "password-hash": "*",
+    "tok": "*",
+    "traverse": "*",
     "underscore.string": "*"
   },
   "name": "derby-user",

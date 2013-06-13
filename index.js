@@ -1,90 +1,18 @@
 var _ = require('lodash')
   , _s = require('underscore.string')
-  , async = require('async')
   , dotty = require('dotty')
   , passport = require('passport')
-  , passwordHash = require('password-hash');
+  , traverse = require('traverse');
 
 module.exports = function (app, options) {
-  var assembleUser = function (obj) {
-    var user = {};
-
-    _.each(options.accessLevels, function (lvl) {
-      user[lvl] = {};
-    });
-
-    _.each(obj, function (val, key) {
-      dotty.put(user, key, val);
-    });
-
-    return user;
-  };
-
-  var findUserId = function (model, user, callback) {
-    if (_.isFunction(options.local.findUserId)) {
-      return options.local.findUserId(model, user, callback);
-    }
-
-    var found = null;
-
-    async.some(options.local.findUserId, function (path, callback) {
-      path = path.split('.');
-
-      var val = dotty.get(user, path)
-        , coll = getUserCollection(path.shift())
-        , doc = path.join('.')
-        , target = {$query: {}};
-
-      target.$query[doc] = val;
-      var query = model.query(coll, target);
-
-      model.fetch(query, function (err) {
-        if (err) return callback(err);
-        var userId = dotty.get(query.get(), '0.id');
-        if (userId) found = userId;
-        callback(userId);
-      });
-    }, function (userId) {
-      callback(null, found);
-    });
-  };
-
-  var remindUser = function (mode, user, callback) {
-    if (_.isFunction(options.local.remindUser)) {
-      return options.local.remindUser(model, user, callback);
-    }
-
-    console.log('unimplemented');
-  };
-
-  var getUserCollection = function (lvl) {
-    if (!lvl) lvl = options.accessLevels[0];
-    return options.collectionName + _s.capitalize(lvl);
-  };
-
   options = _.merge(options || {}, {
-    accessLevels: [
-      'public',
-      'private'
-    ],
+    accessLevels: ['public', 'private'],
     clientConfig: {
-      path: '$auth',
-      pick: ['accessLevels', 'forgotRoute', 'session', 'signInRoute', 'signOutRoute']
+      path: '$user',
+      pick: ['accessLevels', 'routes', 'session', 'validation']
     },
     collectionName: 'users',
-    forgotRoute: '/forgot',
-    local: {
-      findUserId: [
-        'private.local.email',
-        'public.local.username'
-      ],
-      password: {
-        hash: {},
-        maximumLength: 100,
-        minimumLength: 6,
-        path: 'private.local.password'
-      },
-    },
+    keys: [],
     providers: {
       schema: {
         'public': ['_json.picture', 'displayName', 'photos', 'username'],
@@ -93,17 +21,84 @@ module.exports = function (app, options) {
       strategies: {},
       path: 'providers'
     },
+    routes: {
+      change: {
+        url: '/change'
+      },
+      forgot: {
+        token: {},
+        url: '/forgot'
+      },
+      reset: {
+        url: '/reset'
+      },
+      signIn: {
+        url: '/signin'
+      },
+      signUp: {
+        url: '/signup'
+      },
+      signOut: {
+        url: '/signout'
+      }
+    },
+    schema: {
+      private: {
+        local: {
+          email: {
+            default: null,
+            key: true,
+            verify: 'private.local.emailVerified'
+          },
+          password: {
+            default: null,
+            hash: {},
+            type: 'password'
+          },
+          phone: {
+            default: null,
+            key: true,
+            type: 'phone',
+            verify: 'private.local.phoneVerified'
+          }
+        }
+      },
+      public: {
+        local: {
+          username: {
+            default: null,
+            key: true
+          }
+        }
+      }
+    },
     session: {
       idPath: 'user.id',
       isRegisteredPath: 'user.isRegistered'
-    },
-    signInRoute: '/signin',
-    signOutRoute: '/signout',
-    signUpRoute: '/signup'
+    }
   });
 
-  if (_.isString(options.local.findUserId)) {
-    options.local.findUserId = [options.local.findUserId];
+  // retrieve user keys from schema
+  traverse(options.schema).forEach(function (x) {
+    if (this.isLeaf && this.key === 'key' && x) {
+      options.keys.push(this.parent.path.join('.'));
+    }
+  });
+
+  options.keys = _.uniq(options.keys);
+
+  // create user skeleton from schema
+  if (!options.skeleton) {
+    options.skeleton = traverse(options.schema).map(function (x) {
+      if (this.isLeaf && this.key === 'default') {
+        if (_.isNull(x) || _.isUndefined(x)) return this.parent.remove();
+        this.parent.update(x);
+      }
+    });
+  }
+
+  if (!options.secretKey) {
+    throw 'must provide a secretKey';
   }
 
   if (!options.accessLevels) {
@@ -143,239 +138,16 @@ module.exports = function (app, options) {
     strategy.config.passReqToCallback = true;
   });
 
+  _.defaults(options.routes.reset.token, {secretKey: options.secretKey});
+
   return {
     init: function () {
-      app.use(passport.initialize());
-      app.use(passport.session());
-
-      passport.serializeUser(function (user, done) {
-        done(null, user.id);
-      });
-
-      passport.deserializeUser(function (userId, done) {
-        return done(null, {id: userId});
-      });
-
-      _.each(options.providers.strategies, function (strategy, name) {
-        var Strategy = require(strategy.module)[strategy.name];
-
-        passport.use(new Strategy(strategy.config, strategy.verify(
-          function (req, profileId, profile, done) {
-            var model = req.getModel()
-              , target = {$query: {}}
-              , coll = getUserCollection(options.accessLevels[0])
-              , doc = options.providers.path + '.' + name + '.id'
-              , query = model.query(coll, target)
-              , userId = model.get('_session.' + options.session.idPath);
-
-            target.$query[doc] = profileId;
-
-            model.fetch(query, function (err) {
-              if (err) return done(err);
-              userId = dotty.get(query.get(), '0.id') || userId;
-
-              _.each(options.accessLevels, function (lvl) {
-                var coll = getUserCollection(lvl)
-                  , part = model.at(coll + '.' + userId)
-                  , prov = part.at(options.providers.path + '.' + name);
-
-                part.fetch(function (err) {
-                  if (err) return done(err);
-                  part.set('id', userId);
-                  part.set('registered', true);
-                  prov.set('id', profileId)
-
-                  _.each(options.providers.schema[lvl], function (path) {
-                    if (path === '*') {
-                      prov.set(profile);
-                      profile = {};
-                    } else {
-                      var val = dotty.get(profile, path);
-                      if (!val) return;
-                      prov.set(path, val);
-                      dotty.remove(profile, path);
-                    }
-                  });
-                });
-              });
-
-              model.set('_session.' + options.session.idPath, userId);
-              model.set('_session.' + options.session.isRegisteredPath, true);
-              dotty.put(req.session, options.session.idPath, userId);
-              dotty.put(req.session, options.session.isRegisteredPath, true);
-              done(null, {id: userId});
-            });
-          }
-        )));
-      });
-
-      return function (req, res, next) {
-        var model = req.getModel()
-          , userId = dotty.get(req.session, options.session.idPath);
-
-        if (userId) {
-          var coll = getUserCollection(options.accessLevels[0])
-            , part = model.at(coll + '.' + userId);
-
-          part.fetch(function (err) {
-            if (err) return next(err);
-            model.set('_session.' + options.session.isRegisteredPath, part.get('registered'));
-          });
-        } else {
-          userId = model.id();
-          dotty.put(req.session, options.session.idPath, userId);
-
-          _.each(options.accessLevels, function (lvl) {
-            model.add(getUserCollection(lvl), {id: userId, registered: false});
-          });
-
-          model.set('_session.' + options.session.isRegisteredPath, false);
-        }
-
-        model.set('_session.' + options.session.idPath, userId);
-
-        // pass configuration to the client
-        // can be used by components (signin, signup, etc.)
-        if (options.clientConfig) {
-          _.each(_.pick(options, options.clientConfig.pick), function (val, key) {
-            model.set(options.clientConfig.path + '.' + key, val);
-          });
-        }
-
-        next();
-      };
+      var init = require('./lib/init');
+      return init(app, options);
     },
     routes: function () {
-      _.each(options.providers.strategies, function (strategy, name) {
-
-        app.get(strategy.options.url, passport.authenticate(name, strategy.options));
-
-        app.get(strategy.callback.url, passport.authenticate(name, strategy.callback), function (req, res) {
-          if (!strategy.callback.popup) return res.redirect('/');
-
-          var model = req.getModel()
-            , userId = model.get('_session.' + options.session.idPath);
-
-          // blank page with a script that immediately closes the window
-          var script = _s.sprintf("<script>"
-            + "if (opener && opener.location) {"
-            + "opener.DERBY.app.model.set('_session.%s', '%s');"
-            + "opener.DERBY.app.model.set('_session.%s', true);"
-            + "}"
-            + "window.close();"
-            + "</script>",
-            options.session.idPath,
-            userId,
-            options.session.isRegisteredPath
-          );
-
-          res.send(script);
-        });
-      });
-
-      app.post(options.forgotRoute, function (req, res) {
-        var model = req.getModel()
-          , user = assembleUser(req.body)
-          , pass = dotty.get(user, options.local.password.path);
-
-        findUserId(model, user, function (err, userId) {
-          if (err) return res.send(500, {error: err});
-          if (!userId) return res.send(404, {error: 'user not found'});
-
-          remindUser(user, function (err) {
-            if (err) return res.send(500, {error: err});
-            return res.send();
-          });
-        });
-      });
-
-      app.post(options.signInRoute, function (req, res) {
-        var model = req.getModel()
-          , user = assembleUser(req.body)
-          , pass = dotty.get(user, options.local.password.path);
-
-        findUserId(model, user, function (err, userId) {
-          var failure = function (err) {
-            return res.send(400, {error: err});
-          }
-
-          var success = function () {
-            dotty.put(req.session, options.session.idPath, userId);
-            model.set('_session.' + options.session.idPath, userId);
-            model.set('_session.' + options.session.isRegisteredPath, true);
-            return res.send({id: userId, isRegistered: true});
-          }
-
-          if (err) return failure(err);
-          if (!userId) return failure();
-          if (!options.local.password) return success();
-
-          var coll = getUserCollection(options.local.password.path.split('.')[0])
-            , part = model.at(coll + '.' + userId)
-            , path = options.local.password.path.split('.').slice(1).join('.')
-
-          part.fetch(function (err) {
-            if (err) return failure(err);
-            var dbPass = part.get(path);
-
-            if (options.local.password.hash) {
-              return passwordHash.verify(pass, dbPass) ? success() : failure();
-            }
-
-            return dbPass === pass ? success() : failure();
-          });
-        });
-      });
-
-      app.post(options.signOutRoute, function (req, res) {
-        var model = req.getModel()
-          , userId = dotty.get(req.session, options.session.idPath)
-          , user = model.at(getUserCollection() + '.' + userId);
-
-        user.fetch(function (err) {
-          if (err) return res.send(500, {err: err});
-          if (!user.get('registered')) return res.send(400, {error: 'already signed out'});
-          var userId = model.id();
-          dotty.put(req.session, options.session.idPath, userId);
-
-          _.each(options.accessLevels, function (lvl) {
-            model.add(getUserCollection(lvl), {id: userId, registered: false});
-          });
-
-          model.set('_session.' + options.session.isRegisteredPath, false);
-          return res.send({id: userId});
-        });
-      });
-
-      app.post(options.signUpRoute, function (req, res) {
-        var model = req.getModel()
-          , user = assembleUser(req.body)
-          , userId = dotty.get(req.session, options.session.idPath);
-
-        if (options.local.password && options.local.password.hash) {
-          var pass = dotty.get(user, options.local.password.path)
-            , hash = passwordHash.generate(pass, options.local.password.hash);
-
-          // replace user password with hashed password
-          dotty.put(user, options.local.password.path, hash);
-        }
-
-        _.each(options.accessLevels, function (lvl) {
-          var part = model.at(getUserCollection(lvl) + '.' + userId);
-
-          part.fetch(function (err) {
-            if (err) return res.send(500, {error: err});
-            var obj = _.merge(part.get(), user[lvl], {registered: true});
-            part.set(obj);
-          });
-        });
-
-        return res.send({id: userId});
-      });
-
-      return function (req, res, next) {
-        next();
-      };
+      var routes = require('./lib/routes');
+      return routes(app, options);
     }
   }
 };

@@ -12,7 +12,7 @@ exports.create = function (model, dom) {
       },
       success: function (data) {
         var root = model.parent().parent()
-          , onSuccess = model.get('onsuccess')
+          , onSuccess = this.model.get('onsuccess')
           , redirect = model.get('successredirect');
 
         if (onSuccess) DERBY.app[onSuccess]();
