@@ -1,6 +1,7 @@
 var _ = require('lodash')
   , _s = require('underscore.string')
   , dotty = require('dotty')
+  , fs = require('fs')
   , passport = require('passport')
   , traverse = require('traverse');
 
@@ -73,9 +74,13 @@ module.exports = function (app, options) {
       }
     },
     session: {
-      idPath: 'user.id',
-      isRegisteredPath: 'user.isRegistered'
+      path: 'user'
     }
+  });
+
+  fs.readFile(__dirname + '/lib/callback.html', 'utf8', function (err, data) {
+    if (err) return console.error(err);
+    options.providers.callbackTemplate = _.template(data);
   });
 
   // retrieve user keys from schema
@@ -138,7 +143,9 @@ module.exports = function (app, options) {
     strategy.config.passReqToCallback = true;
   });
 
-  _.defaults(options.routes.reset.token, {secretKey: options.secretKey});
+  _.defaults(options.routes.reset.token, {
+    secretKey: options.secretKey
+  });
 
   return {
     init: function () {

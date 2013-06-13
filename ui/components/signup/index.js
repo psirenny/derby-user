@@ -13,8 +13,8 @@ exports.create = function (model, dom) {
           , onSuccess = model.get('onsuccess');
 
         if (onSuccess) DERBY.app[onSuccess]();
-        root.set('_session.' + config.session.idPath, data.id);
-        root.set('_session.' + config.session.isRegisteredPath, true);
+        root.set('_session.' + config.session.path + '.id', data.id);
+        root.set('_session.' + config.session.path + '.registered', true);
       }
     });
   });

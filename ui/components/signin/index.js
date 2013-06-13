@@ -17,8 +17,10 @@ exports.create = function (model, dom) {
           , onSuccess = model.get('onsuccess')
           , redirect = model.get('successredirect');
 
-        root.set('_session.' + config.session.idPath, data.id);
-        root.set('_session.' + config.session.isRegisteredPath, data.isRegistered);
+        console.log('data:');
+        console.log(data);
+        root.set('_session.' + config.session.path + '.id', data.id);
+        root.set('_session.' + config.session.path + '.registered', data.registered);
         if (onSuccess) DERBY.app[onSuccess]();
         if (redirect) DERBY.app.history.push(redirect);
       }
