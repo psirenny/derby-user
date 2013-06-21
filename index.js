@@ -23,6 +23,11 @@ module.exports = function (app, options) {
       path: 'providers'
     },
     routes: {
+      ajax: {
+        passwordMatches: {
+          url: '/passwordMatches'
+        }
+      },
       change: {
         url: '/change'
       },
