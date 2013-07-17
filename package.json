@@ -10,7 +10,7 @@
     "underscore.string": "*"
   },
   "name": "derby-user",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "A user library for the Derby JS framework",
   "main": "index.js",
   "scripts": {
