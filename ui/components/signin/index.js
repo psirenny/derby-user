@@ -24,12 +24,12 @@ exports.create = function (model, dom) {
 
     if (_s.contains(value, ' ')) {
       $validation.set('state', 'invalid');
-      $validation.set('code', '0');
+      $validation.set('code', '2');
     }
 
     if (value.length > config.get('validation.email.maximumLength')) {
       $validation.set('state', 'invalid');
-      $validation.set('code', '1');
+      $validation.set('code', '3');
       return callback(true);
     }
 
@@ -39,7 +39,7 @@ exports.create = function (model, dom) {
         $validation.del('code');
       } else {
         $validation.set('state', 'invalid');
-        $validation.set('code', 'x');
+        $validation.set('code', '4');
       }
       return callback(true);
     }
@@ -52,7 +52,7 @@ exports.create = function (model, dom) {
         $validation.del('code');
       } else {
         $validation.set('state', 'invalid');
-        $validation.set('code', 'x');
+        $validation.set('code', '5');
       }
       return callback(true);
     }
@@ -81,7 +81,7 @@ exports.create = function (model, dom) {
           $validation.del('code');
         } else {
           $validation.set('state', 'invalid');
-          $validation.set('code', 'x');
+          $validation.set('code', '6');
         }
         return callback(true);
       }
@@ -96,7 +96,7 @@ exports.create = function (model, dom) {
 
       if (e.type === 'submit') {
         $validation.set('state', 'invalid');
-        $validation.set('code', 'x');
+        $validation.set('code', '1');
       } else {
         $validation.set('state', 'default');
         $validation.del('code');
@@ -120,7 +120,7 @@ exports.create = function (model, dom) {
     if (!value) {
       if (e.type === 'submit') {
         $validation.set('state', 'invalid');
-        $validation.set('code', 'x');
+        $validation.set('code', '1');
       } else {
         $validation.set('state', 'default');
         $validation.del('code');
@@ -134,14 +134,14 @@ exports.create = function (model, dom) {
         $validation.del('code');
       } else {
         $validation.set('state', 'invalid');
-        $validation.set('code', 'x');
+        $validation.set('code', '2');
       }
       return callback(true);
     }
 
     if (value.length > config.get('validation.password.maximumLength')) {
       $validation.set('state', 'invalid');
-      $validation.set('code', 'x');
+      $validation.set('code', '3');
       return callback(true);
     }
 
@@ -175,7 +175,7 @@ exports.create = function (model, dom) {
           $validation.del('code');
         } else {
           $validation.set('state', 'invalid');
-          $validation.set('code', 'x');
+          $validation.set('code', '4');
         }
         callback(true);
       }
@@ -189,7 +189,7 @@ exports.create = function (model, dom) {
 
     if (_s.contains(value, ' ')) {
       $validation.set('state', 'invalid');
-      $validation.set('code', 'x');
+      $validation.set('code', '7');
       return callback(true);
     }
 
@@ -198,7 +198,7 @@ exports.create = function (model, dom) {
     if (invalid && invalid.length) {
       invalid = _.uniq(invalid);
       $validation.set('state', 'invalid');
-      $validation.set('code', 'x');
+      $validation.set('code', '8');
       $validation.set('data', {characters: invalid});
       return callback(true);
     }
@@ -209,14 +209,14 @@ exports.create = function (model, dom) {
         $validation.del('code');
       } else {
         $validation.set('state', 'invalid');
-        $validation.set('code', 'x');
+        $validation.set('code', '9');
       }
       return callback(true);
     }
 
     if (value.length > config.get('validation.username.maximumLength')) {
       $validation.set('state', 'invalid');
-      $validation.set('code', '1');
+      $validation.set('code', '10');
       return callback(true);
     }
 
@@ -244,7 +244,7 @@ exports.create = function (model, dom) {
           $validation.del('code');
         } else {
           $validation.set('state', 'invalid');
-          $validation.set('code', 'x');
+          $validation.set('code', '11');
         }
         callback(true);
       }
