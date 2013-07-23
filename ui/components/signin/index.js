@@ -289,7 +289,7 @@ exports.provider = function (e, el) {
   var onSuccess = this.model.get('onsuccess')
     , redirect = this.model.get('successredirect');
 
-  e.preDefault();
+  e.preventDefault();
   if (!el.href) return console.error('must specify a provider url (i.e. <a href="/signin/provider">...</a>');
 
   $.popupWindow(el.href, {
