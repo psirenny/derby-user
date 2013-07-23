@@ -253,15 +253,11 @@ exports.create = function (model, dom) {
   dom.addListener(handle, 'keyup', validatePassword);
 
   dom.addListener(form, 'submit', function (e) {
-    async.parallel([
-      _.partial(validateHandle, e),
-      _.partial(validatePassword, e)
-    ], function (err) {
-      if (err) return;
+    var redirect = model.get('failureredirect');
 
+    var submit = function () {
       $(form).ajaxSubmit({
         error: function () {
-          var redirect = model.get('failureredirect');
           if (redirect) DERBY.app.history.push(redirect);
         },
         success: function (data) {
@@ -274,6 +270,13 @@ exports.create = function (model, dom) {
           if (redirect) DERBY.app.history.push(redirect);
         }
       });
+
+      return false;
+    };
+
+    async.parallel([_.partial(validateHandle, e), _.partial(validatePassword, e)], function (err) {
+      if (!err) return submit();
+      if (redirect) DERBY.app.history.push(redirect);
     });
 
     return false;
