@@ -31,6 +31,7 @@ exports.create = function (model, dom) {
       } else {
         $validation.set('state', 'default');
         $validation.del('code');
+        return callback(true);
       }
     }
 
@@ -145,6 +146,7 @@ exports.create = function (model, dom) {
       } else {
         $validation.set('state', 'default');
         $validation.del('code');
+        return callback(true);
       }
     }
 
