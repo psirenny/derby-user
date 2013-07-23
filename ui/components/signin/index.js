@@ -247,9 +247,9 @@ exports.create = function (model, dom) {
   };
 
   dom.addListener(handle, 'keyup', validateHandle);
-  dom.addListener(handle, 'change', validateHandle);
+  dom.addListener(handle, 'blur', validateHandle);
   dom.addListener(password, 'keyup', validatePassword);
-  dom.addListener(password, 'change', validatePassword);
+  dom.addListener(password, 'blur', validatePassword);
   dom.addListener(handle, 'keyup', validatePassword);
 
   dom.addListener(form, 'submit', function (e) {
