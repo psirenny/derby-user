@@ -24,6 +24,9 @@ module.exports = function (app, options) {
     },
     routes: {
       ajax: {
+        userExists: {
+          url: '/userExists'
+        },
         passwordMatches: {
           url: '/passwordMatches'
         }
@@ -54,26 +57,29 @@ module.exports = function (app, options) {
           email: {
             default: null,
             key: true,
-            verify: 'private.local.emailVerified'
+            maximumLength: 100,
+            minimumLength: 6,
+            type: 'email'
+            //verify: 'private.local.emailVerified'
           },
           password: {
             default: null,
             hash: {},
+            maximumLength: 100,
+            minimumLength: 6,
             type: 'password'
-          },
-          phone: {
-            default: null,
-            key: true,
-            type: 'phone',
-            verify: 'private.local.phoneVerified'
           }
         }
       },
       public: {
         local: {
           username: {
+            allowedCharacters: /[a-zA-Z_-]/,
             default: null,
-            key: true
+            key: true,
+            maximumLength: 50,
+            minimumLength: 6,
+            type: 'username'
           }
         }
       }
