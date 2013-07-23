@@ -18,18 +18,13 @@ exports.create = function (model, dom) {
   if (!form) return console.error('must specifiy form element (i.e. <form x-as="form">...</form>');
 
   var validateEmail = function (e, callback) {
-    var value = handle.value
+    var value = _s.trim(handle.value)
       , $validation = model.at(handle).at('validation')
       , callback = callback || function () {};
 
-    if (_s.contains(value, ' ')) {
-      $validation.set('state', 'invalid');
-      $validation.set('code', '2');
-    }
-
     if (value.length > config.get('validation.email.maximumLength')) {
       $validation.set('state', 'invalid');
-      $validation.set('code', '3');
+      $validation.set('code', '2');
       return callback(true);
     }
 
@@ -39,7 +34,7 @@ exports.create = function (model, dom) {
         $validation.del('code');
       } else {
         $validation.set('state', 'invalid');
-        $validation.set('code', '4');
+        $validation.set('code', '3');
       }
       return callback(true);
     }
@@ -52,7 +47,7 @@ exports.create = function (model, dom) {
         $validation.del('code');
       } else {
         $validation.set('state', 'invalid');
-        $validation.set('code', '5');
+        $validation.set('code', '4');
       }
       return callback(true);
     }
@@ -81,7 +76,7 @@ exports.create = function (model, dom) {
           $validation.del('code');
         } else {
           $validation.set('state', 'invalid');
-          $validation.set('code', '6');
+          $validation.set('code', '5');
         }
         return callback(true);
       }
@@ -183,13 +178,13 @@ exports.create = function (model, dom) {
   };
 
   var validateUsername = function (e, callback) {
-    var value = handle.value
+    var value = _s.trim(handle.value)
       , $validation = model.at(handle).at('validation')
       , callback = callback || function () {};
 
     if (_s.contains(value, ' ')) {
       $validation.set('state', 'invalid');
-      $validation.set('code', '7');
+      $validation.set('code', '6');
       return callback(true);
     }
 
@@ -198,7 +193,7 @@ exports.create = function (model, dom) {
     if (invalid && invalid.length) {
       invalid = _.uniq(invalid);
       $validation.set('state', 'invalid');
-      $validation.set('code', '8');
+      $validation.set('code', '7');
       $validation.set('data', {characters: invalid});
       return callback(true);
     }
@@ -209,14 +204,14 @@ exports.create = function (model, dom) {
         $validation.del('code');
       } else {
         $validation.set('state', 'invalid');
-        $validation.set('code', '9');
+        $validation.set('code', '8');
       }
       return callback(true);
     }
 
     if (value.length > config.get('validation.username.maximumLength')) {
       $validation.set('state', 'invalid');
-      $validation.set('code', '10');
+      $validation.set('code', '9');
       return callback(true);
     }
 
@@ -244,7 +239,7 @@ exports.create = function (model, dom) {
           $validation.del('code');
         } else {
           $validation.set('state', 'invalid');
-          $validation.set('code', '11');
+          $validation.set('code', '10');
         }
         callback(true);
       }
