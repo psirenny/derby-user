@@ -11,7 +11,7 @@
     "validator": "*"
   },
   "name": "derby-user",
-  "version": "0.2.2",
+  "version": "0.3.0",
   "description": "A user library for the Derby JS framework",
   "main": "index.js",
   "scripts": {
