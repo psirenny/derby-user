@@ -1,6 +1,7 @@
 var _ = require('lodash')
   , _s = require('underscore.string')
   , async = require('async')
+  , dotty = require('dotty')
   , validator = require('validator/validator-min')
   , check = validator.check
   , sanitize = validator.sanitize;
@@ -222,7 +223,12 @@ exports.create = function (model, dom) {
   dom.addListener(password, 'blur', validatePassword);
 
   dom.addListener(form, 'submit', function (e) {
-    var redirect = model.get('failureredirect');
+    var redirect = model.get('failureredirect')
+      , onSubmitting = model.get('onsubmitting')
+      , onSubmitted = model.get('onSubmitted');
+
+    onSubmitting = dotty.get(DERBY.app, onSubmitting) || function (callback) { callback(); };
+    onSubmitted = dotty.get(DERBY.app, onSubmitted) || function (callback) { callback(); };
 
     var submit = function () {
       $(form).ajaxSubmit({
@@ -242,6 +248,14 @@ exports.create = function (model, dom) {
 
       return false;
     };
+
+    submit = _.wrap(submit, function (fn) {
+      async.series([
+        _.partial(onSubmitting, e, form),
+        fn,
+        _.partial(onSubmitted, e, form)
+      ]);
+    });
 
     async.parallel([
       _.partial(validateUsername, e),
