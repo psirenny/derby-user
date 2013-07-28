@@ -121,33 +121,6 @@ module.exports = function (app, options) {
     options.accessLevels = [''];
   }
 
-  _.each(options.providers.strategies, function (strategy, name) {
-    _.merge(strategy, {
-      callback: {
-        popup: true,
-        url: '/auth/' + name + '/callback'
-      },
-      config: {},
-      module: 'passport-' + name,
-      name: 'Strategy',
-      options: {
-        url: '/auth/' + name
-      },
-      verify: function (callback) {
-        return function () {
-          var req = arguments[0]
-            , profile = _.last(arguments, 2)[0]
-            , profileId = arguments.length === 4 ? arguments[1] : profile.id
-            , done = _.last(arguments);
-
-          callback(req, profileId, profile, done);
-        };
-      }
-    }, _.defaults);
-
-    strategy.config.passReqToCallback = true;
-  });
-
   _.defaults(options.routes.reset.token, {
     secretKey: options.secretKey
   });
