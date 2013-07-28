@@ -14,14 +14,6 @@ module.exports = function (app, options) {
     },
     collectionName: 'users',
     keys: [],
-    providers: {
-      schema: {
-        'public': ['_json.picture', 'displayName', 'photos', 'username'],
-        'private': '*'
-      },
-      strategies: {},
-      path: 'providers'
-    },
     routes: {
       ajax: {
         userExists: {
@@ -128,12 +120,6 @@ module.exports = function (app, options) {
   if (!options.accessLevels) {
     options.accessLevels = [''];
   }
-
-  _.each(options.accessLevels, function (lvl) {
-    var schema = options.providers.schema;
-    if (!schema[lvl]) schema[lvl] = [];
-    if (_.isString(schema[lvl])) schema[lvl] = [schema[lvl]];
-  });
 
   _.each(options.providers.strategies, function (strategy, name) {
     _.merge(strategy, {
