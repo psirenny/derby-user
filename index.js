@@ -25,29 +25,37 @@ module.exports = function (app, options) {
     routes: {
       ajax: {
         userExists: {
+          method: 'post',
           url: '/userExists'
         },
         passwordMatches: {
+          method: 'post',
           url: '/passwordMatches'
         }
       },
       change: {
+        method: 'post',
         url: '/change'
       },
       forgot: {
+        method: 'post',
         token: {},
         url: '/forgot'
       },
       reset: {
+        method: 'post',
         url: '/reset'
       },
       signIn: {
+        method: 'post',
         url: '/signin'
       },
       signUp: {
+        method: 'post',
         url: '/signup'
       },
       signOut: {
+        method: 'post',
         url: '/signout'
       }
     },

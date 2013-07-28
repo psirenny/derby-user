@@ -24,7 +24,7 @@ exports.create = function (model, dom) {
 
     if (value.length > config.get('validation.email.maximumLength')) {
       $validation.set('state', 'invalid');
-      $validation.set('code', '2');
+      $validation.set('code', '3');
       return callback(true);
     }
 
@@ -34,7 +34,7 @@ exports.create = function (model, dom) {
         $validation.del('code');
       } else {
         $validation.set('state', 'invalid');
-        $validation.set('code', '3');
+        $validation.set('code', '2');
       }
       return callback(true);
     }
