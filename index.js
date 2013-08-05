@@ -10,7 +10,7 @@ module.exports = function (app, options) {
     accessLevels: ['public', 'private'],
     clientConfig: {
       path: '$user',
-      pick: ['accessLevels', 'routes', 'session', 'validation']
+      pick: ['accessLevels', 'defaultUser', 'routes', 'session', 'validation']
     },
     collectionName: 'users',
     keys: [],
