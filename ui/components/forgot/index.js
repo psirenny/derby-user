@@ -69,7 +69,7 @@ exports.submitError = function (err) {
 };
 
 exports.submitSuccess = function (data) {
-  self.emit('submitSuccess', data);
+  this.emit('submitSuccess', data);
   var redirect = this.model.get('successredirect');
   if (redirect) DERBY.app.history.push(redirect);
 };

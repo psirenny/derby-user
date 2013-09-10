@@ -7,7 +7,7 @@ var _ = require('lodash')
 
 module.exports = function (app, options) {
   options = _.merge(options || {}, {
-    accessLevels: ['public', 'private'],
+    accessLevels: ['public', 'private', 'restricted'],
     clientConfig: {
       path: '$user',
       pick: ['accessLevels', 'defaultUser', 'routes', 'session', 'validation']
