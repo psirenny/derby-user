@@ -2,6 +2,7 @@
   "dependencies": {
     "async": "*",
     "dotty": "*",
+    "JSONSelect": "*",
     "lodash": "*",
     "passport": "*",
     "password-hash": "*",
