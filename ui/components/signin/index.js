@@ -246,11 +246,16 @@ exports.create = function (model, dom) {
     });
   };
 
-  dom.addListener(handle, 'keyup', validateHandle);
-  dom.addListener(handle, 'blur', validateHandle);
-  dom.addListener(password, 'keyup', validatePassword);
-  dom.addListener(password, 'blur', validatePassword);
-  dom.addListener(handle, 'keyup', validatePassword);
+  if (handle) {
+    dom.addListener(handle, 'keyup', validateHandle);
+    dom.addListener(handle, 'blur', validateHandle);
+    dom.addListener(handle, 'keyup', validatePassword);
+  }
+
+  if (password) {
+    dom.addListener(password, 'keyup', validatePassword);
+    dom.addListener(password, 'blur', validatePassword);
+  }
 
   dom.addListener(form, 'submit', function (e) {
     var redirect = model.get('failureredirect');
