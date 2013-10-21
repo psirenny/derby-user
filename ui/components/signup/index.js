@@ -215,12 +215,20 @@ exports.create = function (model, dom) {
     });
   };
 
-  dom.addListener(username, 'keyup', validateUsername);
-  dom.addListener(username, 'blur', validateUsername);
-  dom.addListener(email, 'keyup', validateEmail);
-  dom.addListener(email, 'blur', validateEmail);
-  dom.addListener(password, 'keyup', validatePassword);
-  dom.addListener(password, 'blur', validatePassword);
+  if (username) {
+    dom.addListener(username, 'keyup', validateUsername);
+    dom.addListener(username, 'blur', validateUsername);
+  }
+
+  if (email) {
+    dom.addListener(email, 'keyup', validateEmail);
+    dom.addListener(email, 'blur', validateEmail);
+  }
+
+  if (password) {
+    dom.addListener(password, 'keyup', validatePassword);
+    dom.addListener(password, 'blur', validatePassword);
+  }
 
   dom.addListener(form, 'submit', function (e) {
     var redirect = model.get('failureredirect')
