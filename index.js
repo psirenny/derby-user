@@ -16,6 +16,10 @@ module.exports = function (app, options) {
     keys: [],
     routes: {
       ajax: {
+        createUser: {
+          method: 'post',
+          url: '/createUser'
+        },
         userExists: {
           method: 'post',
           url: '/userExists'
@@ -87,11 +91,6 @@ module.exports = function (app, options) {
     session: {
       path: 'user'
     }
-  });
-
-  fs.readFile(__dirname + '/lib/callback.html', 'utf8', function (err, data) {
-    if (err) return console.error(err);
-    options.providers.callbackTemplate = _.template(data);
   });
 
   // retrieve user keys from schema
