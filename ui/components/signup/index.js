@@ -259,9 +259,9 @@ exports.create = function (model, dom) {
 
     submit = _.wrap(submit, function (fn) {
       async.series([
-        _.partial(onSubmitting, e, form),
-        fn,
-        _.partial(onSubmitted, e, form)
+        //_.partial(onSubmitting, e, form),
+        fn//,
+        //_.partial(onSubmitted, e, form)
       ]);
     });
 

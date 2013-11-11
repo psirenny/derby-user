@@ -1,137 +1,122 @@
-var _ = require('lodash')
-  , _s = require('underscore.string')
-  , dotty = require('dotty')
-  , fs = require('fs')
-  , passport = require('passport')
-  , traverse = require('traverse');
+var passport = require('passport')
+  , passwordHash = require('password-hash')
+  , LocalStrategy = require('passport-local').Strategy;
 
 module.exports = function (app, options) {
-  options = _.merge(options || {}, {
-    accessLevels: ['public', 'private', 'restricted'],
-    clientConfig: {
-      path: '$user',
-      pick: ['accessLevels', 'defaultUser', 'routes', 'session', 'validation']
-    },
-    collectionName: 'users',
-    keys: [],
-    routes: {
-      ajax: {
-        createUser: {
-          method: 'post',
-          url: '/createUser'
-        },
-        userExists: {
-          method: 'post',
-          url: '/userExists'
-        },
-        passwordMatches: {
-          method: 'post',
-          url: '/passwordMatches'
-        }
-      },
-      change: {
-        method: 'post',
-        url: '/change'
-      },
-      forgot: {
-        method: 'post',
-        token: {},
-        url: '/forgot'
-      },
-      reset: {
-        method: 'post',
-        url: '/reset'
-      },
-      signIn: {
-        method: 'post',
-        url: '/signin'
-      },
-      signUp: {
-        method: 'post',
-        url: '/signup'
-      },
-      signOut: {
-        method: 'post',
-        url: '/signout'
-      }
-    },
-    schema: {
-      private: {
-        local: {
-          email: {
-            default: null,
-            key: true,
-            maximumLength: 100,
-            minimumLength: 6,
-            type: 'email'
-            //verify: 'private.local.emailVerified'
-          },
-          password: {
-            default: null,
-            hash: {},
-            maximumLength: 100,
-            minimumLength: 6,
-            type: 'password'
-          }
-        }
-      },
-      public: {
-        local: {
-          username: {
-            allowedCharacters: /[a-zA-Z_-]/,
-            default: null,
-            key: true,
-            maximumLength: 50,
-            minimumLength: 6,
-            type: 'username'
-          }
-        }
-      }
-    },
-    session: {
-      path: 'user'
-    }
-  });
-
-  // retrieve user keys from schema
-  traverse(options.schema).forEach(function (x) {
-    if (this.isLeaf && this.key === 'key' && x) {
-      options.keys.push(this.parent.path.join('.'));
-    }
-  });
-
-  options.keys = _.uniq(options.keys);
-
-  // create user skeleton from schema
-  if (!options.skeleton) {
-    options.skeleton = traverse(options.schema).map(function (x) {
-      if (this.isLeaf && this.key === 'default') {
-        if (_.isNull(x) || _.isUndefined(x)) return this.parent.remove();
-        this.parent.update(x);
-      }
-    });
-  }
-
-  if (!options.secretKey) {
-    throw 'must provide a secretKey';
-  }
-
-  if (!options.accessLevels) {
-    options.accessLevels = [''];
-  }
-
-  _.defaults(options.routes.reset.token, {
-    secretKey: options.secretKey
-  });
-
   return {
     init: function () {
-      var init = require('./lib/init');
-      return init(app, options);
+      passport.serializeUser(function(user, done) {
+        done(null, user.id);
+      });
+
+      passport.deserializeUser(function(userId, done) {
+        done(null, {id: userId});
+      });
+
+      passport.use(new LocalStrategy(
+        {passReqToCallback: true, usernameField: 'usernameOrEmail'},
+        function(req, usernameOrEmail, password, done) {
+          var model = req.getModel();
+          var $query = !~usernameOrEmail.indexOf('@')
+            ? model.query('usersPublic', {'local.username': usernameOrEmail})
+            : model.query('usersPrivate', {'local.email': usernameOrEmail});
+
+          model.fetch($query, function (err) {
+            if (err) return done(err);
+            var user = $query.get()[0];
+            if (!user) return done(null, false, {error: 'not found'});
+            var $private = model.at('usersPrivate.' + user.id);
+            $private.fetch(function (err) {
+              if (err) return done(err);
+              if (passwordHash.verify(password, $private.get('local.hashedPassword'))) return done(null, {id: user.id});
+              done(null, false, {error: 'invalid password'});
+            });
+          });
+        }
+      ));
+
+      app.use(passport.initialize());
+      app.use(passport.session());
+
+      return function (req, res, next) {
+        if (req.headers['phonegap']) return next();
+
+        var model = req.getModel()
+          , userId = req.session.user && req.session.user.id;
+
+        if (!userId) {
+          userId = model.id();
+          model.add('usersPrivate', {id: userId});
+          model.add('usersPublic', {id: userId, created: new Date(), isRegistered: false});
+          req.session.user = {id: userId};
+        }
+
+        model.set('_session.user.id', userId);
+        next();
+      };
     },
     routes: function () {
-      var routes = require('./lib/routes');
-      return routes(app, options);
+      app.post('/signin', function (req, res, next) {
+        passport.authenticate('local', function (err, user, info) {
+          if (err) return res.send(500, {error: err});
+          if (info) return res.send(400, info);
+          if (!user) return res.send(404, {error: 'not found'});
+          req.session.user.id = user.id;
+          res.send({user: user});
+        })(req, res, next);
+      });
+
+      app.post('/signout', function (req, res) {
+        var model = req.getModel()
+          , userId = model.get('_session.user.id')
+          , $public = model.at('usersPublic.' + userId);
+
+        $public.fetch(function (err) {
+          if (err) return res.send(500, {error: err});
+          if (!$public.get('isRegistered')) return res.send(400, {error: 'not signed in', id: 1});
+          var userId = model.id();
+          model.add('usersPublic', {created: new Date(), id: userId, isRegistered: false});
+          model.add('usersPrivate', {id: userId});
+          model.add('usersRestricted', {id: userId});
+          model.set('_session.user', {id: userId, isRegistered: false});
+          req.session.user.id = userId;
+          return res.send({user: {id: userId}});
+        });
+      });
+
+      app.post('/signup', function (req, res) {
+        var model = req.getModel()
+          , email = req.body.email
+          , password = req.body.password
+          , username = req.body.username
+          , userId = model.get('_session.user.id')
+          , $public = model.at('usersPublic.' + userId)
+          , $private = model.at('usersPrivate.' + userId)
+          , $query1 = model.query('usersPublic', {local: {username: username}})
+          , $query2 = model.query('usersPrivate', {local: {email: email}});
+
+        if (!email) return res.send(400, {error: 'missing email', id: 1});
+        if (!password) return res.send(400, {error: 'missing password', id: 2});
+        if (!username) return res.send(400, {error: 'missing username', id: 3});
+
+        model.fetch($query1, $query2, $public, $private,
+          function (err) {
+            if (err) return res.send(500, {error: err});
+            if ($query1.get()[0] || $query2.get()[0]) return res.send(400, {error: 'user exists', id: 4});
+            if ($public.get('isRegistered')) return res.send(400, {error: 'already registered', id: 5});
+            $public.set('isRegistered', true);
+            $public.set('joined', new Date());
+            $public.set('local.username', username);
+            $private.set('local.email', email);
+            $private.set('local.hashedPassword', passwordHash.generate(password, options.password));
+            res.send();
+          }
+        );
+      });
+
+      return function (req, res, next) {
+        next();
+      };
     }
   }
 };
