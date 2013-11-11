@@ -133,11 +133,10 @@ module.exports = function (app, options) {
 
         $public.fetch(function (err) {
           if (err) return res.send(500, {error: err});
-          if (!$public.get('isRegistered')) return res.send(400, {error: 'not signed in', id: 1});
+          if (!$public.get('isRegistered')) return res.send(400, {error: 'not signed in'});
           var userId = model.id();
           model.add('usersPublic', {created: new Date(), id: userId, isRegistered: false});
           model.add('usersPrivate', {id: userId});
-          model.add('usersRestricted', {id: userId});
           model.set('_session.user', {id: userId, isRegistered: false});
           req.session.user.id = userId;
           return res.send({user: {id: userId}});
@@ -155,15 +154,15 @@ module.exports = function (app, options) {
           , $query1 = model.query('usersPublic', {local: {username: username}})
           , $query2 = model.query('usersPrivate', {local: {email: email}});
 
-        if (!email) return res.send(400, {error: 'missing email', id: 1});
-        if (!password) return res.send(400, {error: 'missing password', id: 2});
-        if (!username) return res.send(400, {error: 'missing username', id: 3});
+        if (!email) return res.send(400, {error: 'missing email'});
+        if (!password) return res.send(400, {error: 'missing password'});
+        if (!username) return res.send(400, {error: 'missing username'});
 
         model.fetch($query1, $query2, $public, $private,
           function (err) {
             if (err) return res.send(500, {error: err});
-            if ($query1.get()[0] || $query2.get()[0]) return res.send(400, {error: 'user exists', id: 4});
-            if ($public.get('isRegistered')) return res.send(400, {error: 'already registered', id: 5});
+            if ($query1.get()[0] || $query2.get()[0]) return res.send(400, {error: 'user exists'});
+            if ($public.get('isRegistered')) return res.send(400, {error: 'already registered'});
             $public.set('isRegistered', true);
             $public.set('joined', new Date());
             $public.set('local.username', username);
