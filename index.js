@@ -56,7 +56,67 @@ module.exports = function (app, options) {
       };
     },
     routes: function () {
-      app.post('/signin', function (req, res, next) {
+      app.post('/user/changeEmail', function (req, res) {
+        var model = req.getModel()
+          , email = req.body.email
+          , userId = model.get('_session.user.id')
+          , $query = model.query('usersPrivate', {'local.email': email})
+          , $private = model.at('usersPrivate.' + userId);
+
+        if (!userId) return res.send(400, {error: 'not signed in'});
+        if (!email) return res.send(400, {error: 'missing email'});
+
+        model.fetch($private, $query, function (err) {
+          if (err) return res.send(500, {error: err});
+          var user = $query.get()[0];
+          if (user && user.id !== userId) return res.send(400, {error: 'email in use'});
+          $private.set('local.email', email);
+          res.send();
+        });
+      });
+
+      app.post('/user/changePassword', function (req, res) {
+        var model = req.getModel()
+          , password = req.body.password
+          , confirmPassword = req.body.confirmPassword || password
+          , userId = model.get('_session.user.id')
+          , $private = model.at('usersPrivate.' + userId);
+
+        if (!userId) return res.send(400, {error: 'not signed in'});
+        if (!password) return res.send(400, {error: 'missing password'});
+        if (password !== confirmPassword) return res.send(400, {error: 'passwords do not match'});
+
+        $private.fetch(function (err) {
+          if (err) return res.send(500, {error: err});
+          $private.set('local.hashedPassword', passwordHash.generate(password, options.password));
+          res.send();
+        });
+      });
+
+      app.post('/user/changeUsername', function (req, res) {
+        console.log(1);
+
+        var model = req.getModel()
+          , username = req.body.username
+          , userId = model.get('_session.user.id')
+          , $query = model.query('usersPublic', {'local.username': username})
+          , $public = model.at('usersPublic.' + userId);
+
+        console.log(2);
+        if (!userId) return res.send(400, {error: 'not signed in'});
+        if (!username) return res.send(400, {error: 'missing username'});
+        console.log(3);
+
+        model.fetch($public, $query, function (err) {
+          if (err) return res.send(500, {error: err});
+          var user = $query.get()[0];
+          if (user && user.id !== userId) return res.send(400, {error: 'username in use'});
+          $public.set('local.username', username);
+          res.send();
+        });
+      });
+
+      app.post('/user/signin', function (req, res, next) {
         passport.authenticate('local', function (err, user, info) {
           if (err) return res.send(500, {error: err});
           if (info) return res.send(400, info);
@@ -66,7 +126,7 @@ module.exports = function (app, options) {
         })(req, res, next);
       });
 
-      app.post('/signout', function (req, res) {
+      app.post('/user/signout', function (req, res) {
         var model = req.getModel()
           , userId = model.get('_session.user.id')
           , $public = model.at('usersPublic.' + userId);
@@ -84,7 +144,7 @@ module.exports = function (app, options) {
         });
       });
 
-      app.post('/signup', function (req, res) {
+      app.post('/user/signup', function (req, res) {
         var model = req.getModel()
           , email = req.body.email
           , password = req.body.password
