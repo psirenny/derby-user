@@ -3,41 +3,41 @@ var passport = require('passport')
   , LocalStrategy = require('passport-local').Strategy;
 
 module.exports = function (app, options) {
+  passport.serializeUser(function(user, done) {
+    done(null, user.id);
+  });
+
+  passport.deserializeUser(function(userId, done) {
+    done(null, {id: userId});
+  });
+
+  passport.use(new LocalStrategy(
+    {passReqToCallback: true, usernameField: 'usernameOrEmail'},
+    function(req, usernameOrEmail, password, done) {
+      var model = req.getModel();
+      var $query = !~usernameOrEmail.indexOf('@')
+        ? model.query('usersPublic', {'local.username': usernameOrEmail})
+        : model.query('usersPrivate', {'local.email': usernameOrEmail});
+
+      model.fetch($query, function (err) {
+        if (err) return done(err);
+        var user = $query.get()[0];
+        if (!user) return done(null, false, {error: 'not found'});
+        var $private = model.at('usersPrivate.' + user.id);
+        $private.fetch(function (err) {
+          if (err) return done(err);
+          if (passwordHash.verify(password, $private.get('local.hashedPassword'))) return done(null, {id: user.id});
+          done(null, false, {error: 'invalid password'});
+        });
+      });
+    }
+  ));
+
+  app.use(passport.initialize());
+  app.use(passport.session());
+
   return {
     init: function () {
-      passport.serializeUser(function(user, done) {
-        done(null, user.id);
-      });
-
-      passport.deserializeUser(function(userId, done) {
-        done(null, {id: userId});
-      });
-
-      passport.use(new LocalStrategy(
-        {passReqToCallback: true, usernameField: 'usernameOrEmail'},
-        function(req, usernameOrEmail, password, done) {
-          var model = req.getModel();
-          var $query = !~usernameOrEmail.indexOf('@')
-            ? model.query('usersPublic', {'local.username': usernameOrEmail})
-            : model.query('usersPrivate', {'local.email': usernameOrEmail});
-
-          model.fetch($query, function (err) {
-            if (err) return done(err);
-            var user = $query.get()[0];
-            if (!user) return done(null, false, {error: 'not found'});
-            var $private = model.at('usersPrivate.' + user.id);
-            $private.fetch(function (err) {
-              if (err) return done(err);
-              if (passwordHash.verify(password, $private.get('local.hashedPassword'))) return done(null, {id: user.id});
-              done(null, false, {error: 'invalid password'});
-            });
-          });
-        }
-      ));
-
-      app.use(passport.initialize());
-      app.use(passport.session());
-
       return function (req, res, next) {
         if (req.headers['phonegap']) return next();
 
