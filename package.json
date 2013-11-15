@@ -1,39 +1,28 @@
 {
+  "author": "psirenny <djtorres0@gmail.com>",
+  "bugs": {
+    "url": "https://github.com/psirenny/derby-user/issues"
+  },
   "dependencies": {
-    "async": "*",
-    "dotty": "*",
-    "JSONSelect": "*",
-    "lodash": "*",
     "passport": "*",
-    "password-hash": "*",
-    "tok": "*",
-    "traverse": "*",
-    "underscore.string": "*",
-    "validator": "*"
+    "passport-local": "*",
+    "password-hash": "*"
   },
-  "name": "derby-user",
-  "version": "0.6.1",
-  "description": "A user library for the Derby JS framework",
+  "description": "A user management system for the Derby JS framework.",
+  "keywords": [
+    "derby",
+    "user"
+  ],
+  "license": "MIT",
   "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
+  "name": "derby-user",
+  "readmeFilename": "README.md",
   "repository": {
     "type": "git",
     "url": "git://github.com/psirenny/derby-user.git"
   },
-  "keywords": [
-    "derby",
-    "user",
-    "auth",
-    "management"
-  ],
-  "author": "psirenny",
-  "license": "BSD",
-  "readmeFilename": "README.md",
-  "gitHead": "fa38152a84166295e6fbdd6a851e4a3d85624be8",
-  "devDependencies": {},
-  "bugs": {
-    "url": "https://github.com/psirenny/derby-user/issues"
-  }
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "version": "0.7.0"
 }
