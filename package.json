@@ -5,8 +5,8 @@
   },
   "dependencies": {
     "passport": "*",
-    "passport-local": "*",
-    "password-hash": "*"
+    "password-hash": "*",
+    "passport-local": "*"
   },
   "description": "A user management system for the Derby JS framework.",
   "keywords": [
