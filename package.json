@@ -4,8 +4,9 @@
     "url": "https://github.com/psirenny/derby-user/issues"
   },
   "dependencies": {
+    "credential": "*",
+    "moment": "*",
     "passport": "*",
-    "password-hash": "*",
     "passport-local": "*"
   },
   "description": "A user management system for the Derby JS framework.",
