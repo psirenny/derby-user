@@ -1,14 +1,17 @@
 {
-  "author": "psirenny <djtorres0@gmail.com>",
+  "author": "Dennis Torres <djtorres0@gmail.com>",
   "bugs": {
     "url": "https://github.com/psirenny/derby-user/issues"
   },
   "dependencies": {
-    "credential": "*",
-    "moment": "*",
-    "passport": "*",
-    "passport-local": "*",
-    "qs": "*"
+    "body-parser": "^1.6.2",
+    "credential": "^0.2.5",
+    "express": "^4.7.4",
+    "merge": "^1.1.3",
+    "moment": "^2.8.1",
+    "passport": "^0.2.0",
+    "passport-local": "^1.0.0",
+    "qs": "^1.0.2"
   },
   "description": "A user management system for the Derby JS framework.",
   "keywords": [
@@ -26,5 +29,5 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "version": "0.10.3"
+  "version": "0.11.0"
 }
