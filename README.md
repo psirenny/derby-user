@@ -10,7 +10,7 @@ Installation
 
     $ npm install derby-user --save
 
-Sever Usage
+Server Usage
 -----------
 
 In your server file, add the middleware:
@@ -21,11 +21,11 @@ In your server file, add the middleware:
       // ...
       // ...
       // cookieParser, session, transport, model, bodyParser...
-      .use(user.init(expressApp))
+      .use(user.init())
       // ...
       // ...
       // app.router, expressApp.router
-      .use(user.routes(expressApp))
+      .use('/user', user.routes())
 
 App Usage
 ---------
