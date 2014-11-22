@@ -5,6 +5,8 @@ A user library for [Derby JS](http://derbyjs.com).
 It uses [Passport](http://passportjs.org) for authentication
 and [Credential](https://github.com/dilvie/credential) for storing hashes.
 
+[![Build Status](https://travis-ci.org/psirenny/derby-user.png?branch=master)](https://travis-ci.org/psirenny/derby-user)
+
 Installation
 ------------
 

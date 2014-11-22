@@ -1,0 +1,12 @@
+[
+  {
+    "username": "user0",
+    "email": "user0@foo.com",
+    "password": "pass"
+  },
+  {
+    "username": "user1",
+    "email": "user1@foo.com",
+    "password": "pass"
+  }
+]
