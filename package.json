@@ -12,7 +12,7 @@
     "moment": "^2.8.1",
     "passport": "^0.2.0",
     "passport-local": "^1.0.0",
-    "qs": "^1.0.2"
+    "qs": "^1.2.2"
   },
   "description": "A user management system for the Derby JS framework.",
   "devDependencies": {

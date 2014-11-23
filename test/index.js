@@ -858,6 +858,61 @@ describe('derby-user', function () {
         });
       });
 
+      describe('POST /changeUsername', function () {
+        before(setup);
+
+        it('should require session', function (done) {
+          agent3
+            .post('/user/changeUsername')
+            .send({username: 'user3'})
+            .expect(401, done);
+        });
+
+        it('should require username', function (done) {
+          agent1
+            .post('/user/changeUsername')
+            .expect(422, done);
+        });
+
+        it('should reject username', function (done) {
+          agent1
+            .post('/user/changeUsername')
+            .send({username: 'user1'})
+            .expect(409, done);
+        });
+
+        it('should change username', function (done) {
+          agent1
+            .get('/')
+            .end(function (err, res) {
+              if (err) return done(err);
+              var model = store.createModel();
+              var userId = res.body._session.user.id;
+              var $user1 = model.at('users.' + userId);
+              $user1.fetch(function (err) {
+                if (err) return done(err);
+                agent1
+                  .post('/user/changeUsername')
+                  .send({username: 'user3'})
+                  .expect(200)
+                  .end(function (err, res) {
+                    if (err) return done(err);
+                    model = store.createModel();
+                    var $user2 = model.at('users.' + userId);
+                    $user2.fetch(function (err) {
+                      if (err) return done(err);
+                      var user2 = $user2.get();
+                      user2.local.username.should.be.a.String;
+                      user2.local.username.should.not.be.empty;
+                      user2.local.username.should.equal('user3');
+                      done();
+                    });
+                  });
+              });
+            });
+        });
+      });
+
       describe('GET /confirmEmail', function () {
         before(setup);
 
@@ -918,57 +973,324 @@ describe('derby-user', function () {
         });
       });
 
-      describe('POST /changeUsername', function () {
-        before(setup);
+      describe('POST /confirmEmail', function () {
+        var token = null;
+
+        before(function (done) {
+          setup(function (err) {
+            if (err) return done(err);
+
+            emitter.once('user.sendConfirmEmail',
+              function (req, data) {
+                token = data.token;
+              }
+            );
+
+            agent1
+              .get('/user/confirmEmail')
+              .expect(200, done);
+          });
+        });
 
         it('should require session', function (done) {
           agent3
-            .post('/user/changeUsername')
-            .send({username: 'user3'})
+            .post('/user/confirmEmail')
+            .send({token: token})
             .expect(401, done);
         });
 
-        it('should require username', function (done) {
+        it('should require token', function (done) {
           agent1
-            .post('/user/changeUsername')
+            .post('/user/confirmEmail')
             .expect(422, done);
         });
 
-        it('should reject username', function (done) {
+        it('should reject token', function (done) {
           agent1
-            .post('/user/changeUsername')
-            .send({username: 'user1'})
-            .expect(409, done);
+            .post('/user/confirmEmail')
+            .send({token: 'invalid'})
+            .expect(401, done)
         });
 
-        it('should change username', function (done) {
+        it('should confirm email', function (done) {
+          var emitted = false;
+
+          emitter.once('user.confirmEmail',
+            function (req, data) {
+              req.should.be.an('object');
+              data.should.be.an('object');
+              data.should.have.property('token');
+              data.token.should.be.a.String;
+              data.token.should.not.be.empty;
+              data.should.have.property('userId');
+              data.userId.should.be.a.String;
+              data.userId.should.not.be.empty;
+              emitted = true;
+            }
+          );
+
+          agent1
+            .post('/user/confirmEmail')
+            .send({token: token})
+            .expect(200)
+            .end(function (err) {
+              if (err) return done(err);
+              emitted.should.be.true;
+              done();
+            });
+        });
+      });
+
+      describe('GET /confirmEmail/:id/:token', function () {
+        var token = null;
+
+        before(function (done) {
+          setup(function (err) {
+            if (err) return done(err);
+
+            emitter.once('user.sendConfirmEmail',
+              function (req, data) {
+                token = data.token;
+              }
+            );
+
+            agent1
+              .get('/user/confirmEmail')
+              .expect(200, done);
+          });
+        });
+
+        it('should reject invalid token', function (done) {
           agent1
             .get('/')
+            .expect(200)
             .end(function (err, res) {
               if (err) return done(err);
-              var model = store.createModel();
               var userId = res.body._session.user.id;
-              var $user1 = model.at('users.' + userId);
-              $user1.fetch(function (err) {
+              agent1
+                .get('/user/confirmEmail/' + userId + '/invalid')
+                .expect(302)
+                .end(function (err, res) {
+                  var loc = res.header['location'];
+                  agent1
+                    .get(loc)
+                    .expect(401)
+                    .expect({code: 401, msg: 'token.invalid'}, done)
+                });
+            });
+        });
+
+        it('should reject user missing a token', function (done) {
+          agent2
+            .get('/')
+            .expect(200)
+            .end(function (err, res) {
+              if (err) return done(err);
+              var userId = res.body._session.user.id;
+              agent2
+                .get('/user/confirmEmail/' + userId + '/invalid')
+                .expect(302)
+                .end(function (err, res) {
+                  var loc = res.header['location'];
+                  agent2
+                    .get(loc)
+                    .expect(401)
+                    .expect({code: 401, msg: 'token.invalid'}, done)
+                });
+            });
+        });
+
+        it('should confirm email', function (done) {
+          agent1
+            .get('/')
+            .expect(200)
+            .end(function (err, res) {
+              if (err) return done(err);
+              var userId = res.body._session.user.id;
+              agent1
+                .get('/user/confirmEmail/' + userId + '/' + token)
+                .expect(302)
+                .end(function (err, res) {
+                  var loc = res.header['location'];
+                  agent1
+                    .get(loc)
+                    .expect(200, done);
+                });
+            });
+        });
+
+        it('should not re-confirm email', function (done) {
+          agent1
+            .get('/')
+            .expect(200)
+            .end(function (err, res) {
+              if (err) return done(err);
+              var userId = res.body._session.user.id;
+              agent1
+                .get('/user/confirmEmail/' + userId + '/' + token)
+                .expect(302)
+                .end(function (err, res) {
+                  var loc = res.header['location'];
+                  agent1
+                    .get(loc)
+                    .expect(200)
+                    .expect({code: 200, msg: 'email.verified'}, done)
+                });
+            });
+        });
+      });
+
+      describe('POST /forgotPassword', function () {
+        before(setup);
+
+        it('should require username or email', function (done) {
+          agent1
+            .post('/user/forgotPassword')
+            .expect(422, done);
+        });
+
+        it('should not find username', function (done) {
+          agent1
+            .post('/user/forgotPassword')
+            .send({usernameOrEmail: 'invalid'})
+            .expect(404, done);
+        });
+
+        it('should not find email', function (done) {
+          agent1
+            .post('/user/forgotPassword')
+            .send({usernameOrEmail: 'invalid@email.com'})
+            .expect(404, done);
+        });
+
+        it('should work with username', function (done) {
+          var emitted = false;
+
+          emitter.once('user.forgotPassword', function (req, data) {
+            req.should.be.an('object');
+            data.should.be.an('object');
+            data.should.have.property('token');
+            data.token.should.be.a.String;
+            data.token.should.not.be.empty;
+            data.should.have.property('userId');
+            data.userId.should.be.a.String;
+            data.userId.should.not.be.empty;
+            emitted = true;
+          });
+
+          agent1
+            .post('/user/forgotPassword')
+            .send({usernameOrEmail: 'user1'})
+            .expect(200)
+            .end(function (err) {
+              if (err) return done(err);
+              emitted.should.be.true;
+              done();
+            });
+        });
+
+        it('should work with email', function (done) {
+          var emitted = false;
+
+          emitter.once('user.forgotPassword', function (req, data) {
+            req.should.be.an('object');
+            data.should.be.an('object');
+            data.should.have.property('token');
+            data.token.should.be.a.String;
+            data.token.should.not.be.empty;
+            data.should.have.property('userId');
+            data.userId.should.be.a.String;
+            data.userId.should.not.be.empty;
+            emitted = true;
+          });
+
+          agent1
+            .post('/user/forgotPassword')
+            .send({usernameOrEmail: 'user1@email.com'})
+            .expect(200)
+            .end(function (err) {
+              if (err) return done(err);
+              emitted.should.be.true;
+              done();
+            });
+        });
+      });
+
+      describe('POST /resetPassword', function () {
+        var userId = null;
+        var token = null;
+
+        before(function (done) {
+          setup(function (err) {
+            if (err) return done(err);
+            agent1
+              .get('/')
+              .expect(200)
+              .end(function (err, res) {
                 if (err) return done(err);
+                userId = res.body._session.user.id;
+
+                emitter.once('user.forgotPassword', function (req, data) {
+                  token = data.token;
+                });
+
                 agent1
-                  .post('/user/changeUsername')
-                  .send({username: 'user3'})
-                  .expect(200)
-                  .end(function (err, res) {
-                    if (err) return done(err);
-                    model = store.createModel();
-                    var $user2 = model.at('users.' + userId);
-                    $user2.fetch(function (err) {
-                      if (err) return done(err);
-                      var user2 = $user2.get();
-                      user2.local.username.should.be.a.String;
-                      user2.local.username.should.not.be.empty;
-                      user2.local.username.should.equal('user3');
-                      done();
-                    });
-                  });
+                  .post('/user/forgotPassword')
+                  .send({usernameOrEmail: 'user1'})
+                  .expect(200, done);
               });
+          });
+        });
+
+        it('should require user id', function (done) {
+          agent1
+            .post('/user/resetPassword')
+            .send({password: 'pass'})
+            .send({token: token})
+            .expect(422, done);
+        });
+
+        it('should require password', function (done) {
+          agent1
+            .post('/user/resetPassword')
+            .send({userId: userId})
+            .send({token: token})
+            .expect(422, done);
+        });
+
+        it('should require token', function (done) {
+          agent1
+            .post('/user/resetPassword')
+            .send({userId: userId})
+            .send({password: 'pass'})
+            .expect(422, done);
+        });
+
+        it('should reset password', function (done) {
+          agent1
+            .post('/user/resetPassword')
+            .send({userId: userId})
+            .send({password: 'pass2'})
+            .send({token: token})
+            .expect(200)
+            .end(function (err) {
+              if (err) return done(err);
+              agent1
+                .post('/user/signin')
+                .send({usernameOrEmail: 'user1'})
+                .send({password: 'pass2'})
+                .expect(200)
+                .end(function (err, res) {
+                  if (err) return done(err);
+                  var model = store.createModel();
+                  var $user = model.at('users.' + userId);
+                  $user.fetch(function (err) {
+                    if (err) return done(err);
+                    var user = $user.get();
+                    user.local.password.should.not.have.property('token');
+                    done();
+                  });
+                });
             });
         });
       });
