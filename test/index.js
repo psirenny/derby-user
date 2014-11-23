@@ -15,8 +15,11 @@ describe('derby-user', function () {
   describe('server', function () {
     var emitter = new events.EventEmitter();
     var store = derby.createStore({db: new livedb()});
+    var opts1 = {emitter: emitter};
+    var opts2 = {autoGenerate: false, emitter: emitter};
     var agent1 = null;
     var agent2 = null;
+    var agent3 = null;
 
     it('should be an object', function () {
       lib.should.have.property('server');
@@ -24,8 +27,6 @@ describe('derby-user', function () {
     });
 
     before(function () {
-      var opts1 = {emitter: emitter};
-      var opts2 = {autoGenerate: false, emitter: emitter};
       agent1 = request.agent(fixtures.app(lib, derby, store, opts1));
       agent2 = request.agent(fixtures.app(lib, derby, store, opts2));
     });
@@ -40,7 +41,7 @@ describe('derby-user', function () {
         lib.server.init().should.be.a.Function;
       });
 
-      describe.skip('GET *', function () {
+      describe('GET *', function () {
         it('should create session', function (done) {
           agent1
             .get('/')
@@ -93,15 +94,40 @@ describe('derby-user', function () {
         lib.server.routes.should.be.a.Function;
       });
 
-      it('should return an app', function () {
-        lib.server.routes().should.be.a.Function;
-      });
+      function reset() {
+        store = derby.createStore({db: new livedb()});
+        agent1 = request.agent(fixtures.app(lib, derby, store, opts1));
+        agent2 = request.agent(fixtures.app(lib, derby, store, opts2));
+        agent3 = request.agent(fixtures.app(lib, derby, store, opts2));
+      }
+
+      function setup(done) {
+        reset();
+        agent1
+          .post('/user/signup')
+          .send({username: 'user1'})
+          .send({email: 'user1@email.com'})
+          .send({password: 'pass'})
+          .expect(200)
+          .end(function (err) {
+            if (err) return done(err);
+            agent2
+              .post('/user/signup')
+              .send({username: 'user2'})
+              .send({email: 'user2@email.com'})
+              .send({password: 'pass'})
+              .expect(201, done);
+          });
+      }
 
       describe('POST /signup', function () {
+        before(reset);
+
         it('should require a username', function (done) {
           agent1
             .post('/user/signup')
-            .send(_.omit(fixtures.users[0], 'username'))
+            .send({email: 'user1@email.com'})
+            .send({password: 'pass'})
             .expect(422)
             .expect({error: 'username required'}, done);
         });
@@ -109,7 +135,8 @@ describe('derby-user', function () {
         it('should require an email', function (done) {
           agent1
             .post('/user/signup')
-            .send(_.omit(fixtures.users[0], 'email'))
+            .send({username: 'user1'})
+            .send({password: 'pass'})
             .expect(422)
             .expect({error: 'email required'}, done);
         });
@@ -117,7 +144,8 @@ describe('derby-user', function () {
         it('should require a password', function (done) {
           agent1
             .post('/user/signup')
-            .send(_.omit(fixtures.users[0], 'password'))
+            .send({username: 'user1'})
+            .send({email: 'user1@email.com'})
             .expect(422)
             .expect({error: 'password required'}, done);
         });
@@ -130,7 +158,9 @@ describe('derby-user', function () {
               var userId = res.body._session.user.id;
               agent1
                 .post('/user/signup')
-                .send(fixtures.users[0])
+                .send({username: 'user1'})
+                .send({email: 'user1@email.com'})
+                .send({password: 'pass'})
                 .expect(200)
                 .end(function(err, res) {
                   if (err) return done(err);
@@ -157,7 +187,7 @@ describe('derby-user', function () {
                     user.local.should.have.property('username');
                     user.local.username.should.be.a.String;
                     user.local.username.should.not.be.empty;
-                    user.local.username.should.equal(fixtures.users[0].username);
+                    user.local.username.should.equal('user1');
                     user.local.should.have.property('emails');
                     user.local.emails.should.be.an.Array;
                     user.local.emails.should.not.be.empty;
@@ -165,7 +195,7 @@ describe('derby-user', function () {
                     user.local.emails[0].should.have.property('value');
                     user.local.emails[0].value.should.be.a.String;
                     user.local.emails[0].value.should.not.be.empty;
-                    user.local.emails[0].value.should.equal(fixtures.users[0].email);
+                    user.local.emails[0].value.should.equal('user1@email.com');
                     user.local.emails[0].should.have.property('verified');
                     user.local.emails[0].verified.should.be.a.Boolean;
                     user.local.emails[0].verified.should.be.false;
@@ -183,25 +213,27 @@ describe('derby-user', function () {
         it('should reject username', function (done) {
           agent1
             .post('/user/signup')
-            .send({username: fixtures.users[0].username})
-            .send({email: fixtures.users[1].email})
-            .send({password: fixtures.users[1].password})
+            .send({username: 'user1'})
+            .send({email: 'user2@email.com'})
+            .send({password: 'pass'})
             .expect(409, done);
         });
 
         it('should reject email', function (done) {
           agent1
             .post('/user/signup')
-            .send({username: fixtures.users[1].username})
-            .send({email: fixtures.users[0].email})
-            .send({password: fixtures.users[1].password})
+            .send({username: 'user2'})
+            .send({email: 'user1@email.com'})
+            .send({password: 'pass'})
             .expect(409, done);
         });
 
         it('should register a new user', function (done) {
           agent2
             .post('/user/signup')
-            .send(fixtures.users[1])
+            .send({username: 'user2'})
+            .send({email: 'user2@email.com'})
+            .send({password: 'pass'})
             .expect(201)
             .end(function(err, res) {
               if (err) return done(err);
@@ -228,7 +260,7 @@ describe('derby-user', function () {
                 user.local.should.have.property('username');
                 user.local.username.should.be.a.String;
                 user.local.username.should.not.be.empty;
-                user.local.username.should.equal(fixtures.users[1].username);
+                user.local.username.should.equal('user2');
                 user.local.should.have.property('emails');
                 user.local.emails.should.be.an.Array;
                 user.local.emails.should.not.be.empty;
@@ -236,7 +268,7 @@ describe('derby-user', function () {
                 user.local.emails[0].should.have.property('value');
                 user.local.emails[0].value.should.be.a.String;
                 user.local.emails[0].value.should.not.be.empty;
-                user.local.emails[0].value.should.equal(fixtures.users[1].email);
+                user.local.emails[0].value.should.equal('user2@email.com');
                 user.local.emails[0].should.have.property('verified');
                 user.local.emails[0].verified.should.be.a.Boolean;
                 user.local.emails[0].verified.should.be.false;
@@ -265,7 +297,9 @@ describe('derby-user', function () {
         });
       });
 
-      describe.skip('GET /signout', function () {
+      describe('GET /signout', function () {
+        before(setup);
+
         it('should reset session', function (done) {
           agent1
             .get('/user/signout')
@@ -321,7 +355,9 @@ describe('derby-user', function () {
         });
       });
 
-      describe.skip('POST /signout', function () {
+      describe('POST /signout', function () {
+        before(setup);
+
         it('should reset session', function (done) {
           agent1
             .post('/user/signout')
@@ -377,12 +413,14 @@ describe('derby-user', function () {
         });
       });
 
-      describe.skip('POST /signin', function () {
+      describe('POST /signin', function () {
+        before(setup);
+
         it('should sign in with username', function (done) {
           agent1
             .post('/user/signin')
-            .send({usernameOrEmail: fixtures.users[0].username})
-            .send({password: fixtures.users[0].password})
+            .send({usernameOrEmail: 'user1'})
+            .send({password: 'pass'})
             .expect(200)
             .end(function (err, res) {
               if (err) return done(err);
@@ -415,8 +453,8 @@ describe('derby-user', function () {
         it('should sign in with email', function (done) {
           agent1
             .post('/user/signin')
-            .send({usernameOrEmail: fixtures.users[0].email})
-            .send({password: fixtures.users[0].password})
+            .send({usernameOrEmail: 'user1@email.com'})
+            .send({password: 'pass'})
             .expect(200)
             .end(function (err, res) {
               if (err) return done(err);
@@ -449,47 +487,70 @@ describe('derby-user', function () {
         it('should require a username or email', function (done) {
           agent1
             .post('/user/signin')
-            .send({password: fixtures.users[0].password})
+            .send({password: 'pass'})
             .expect(422, done);
         });
 
         it('should require a password', function (done) {
           agent1
             .post('/user/signin')
-            .send({usernameOrEmail: fixtures.users[0].username})
+            .send({usernameOrEmail: 'user1'})
             .expect(422, done);
         });
 
         it('should not find username', function (done) {
           agent1
             .post('/user/signin')
-            .send({usernameOrEmail: 'nope'})
-            .send({password: fixtures.users[0].password})
+            .send({usernameOrEmail: 'missing'})
+            .send({password: 'pass'})
             .expect(404, done);
         });
 
         it('should not find email', function (done) {
           agent1
             .post('/user/signin')
-            .send({usernameOrEmail: 'nope@nope.com'})
-            .send({password: fixtures.users[0].password})
+            .send({usernameOrEmail: 'missing@email.com'})
+            .send({password: 'pass'})
             .expect(404, done);
         });
 
         it('should reject password', function (done) {
           agent1
             .post('/user/signin')
-            .send({usernameOrEmail: fixtures.users[0].username})
-            .send({password: 'nope'})
+            .send({usernameOrEmail: 'user1'})
+            .send({password: 'invalid'})
             .expect(401, done);
         });
       });
 
-      describe.skip('GET /session', function () {
-        it('should create session', function (done) {
+      describe('GET /session', function () {
+        before(function setup(done) {
+          reset();
+          agent1
+            .post('/user/signup')
+            .send({username: 'user1'})
+            .send({email: 'user1@email.com'})
+            .send({password: 'pass'})
+            .expect(200, done);
+        });
+
+        it('should return current session', function (done) {
+          agent1
+            .get('/')
+            .expect(200)
+            .end(function (err, res) {
+              if (err) return done(err);
+              agent1
+                .get('/user/session')
+                .expect(200)
+                .expect(res.body._session, done);
+            });
+        });
+
+        it('should create new session', function (done) {
           agent2
             .get('/user/session')
-            .expect(200)
+            .expect(201)
             .end(function (err, res) {
               if (err) return done(err);
               res.body.should.be.an.Object;
@@ -517,12 +578,14 @@ describe('derby-user', function () {
         });
       });
 
-      describe.skip('POST /checkPassword', function () {
+      describe('POST /checkPassword', function () {
+        before(setup);
+
         it('should return true for username', function (done) {
-          agent2
+          agent1
             .post('/user/checkPassword')
-            .send({usernameOrEmail: fixtures.users[0].username})
-            .send({password: fixtures.users[0].password})
+            .send({usernameOrEmail: 'user1'})
+            .send({password: 'pass'})
             .expect(200)
             .end(function (err, res) {
               if (err) return done(err);
@@ -535,10 +598,10 @@ describe('derby-user', function () {
         });
 
         it('should return true for email', function (done) {
-          agent2
+          agent1
             .post('/user/checkPassword')
-            .send({usernameOrEmail: fixtures.users[0].email})
-            .send({password: fixtures.users[0].password})
+            .send({usernameOrEmail: 'user1@email.com'})
+            .send({password: 'pass'})
             .expect(200)
             .end(function (err, res) {
               if (err) return done(err);
@@ -551,14 +614,14 @@ describe('derby-user', function () {
         });
 
         it('should return true for user id', function (done) {
-          agent2
+          agent1
             .get('/')
             .end(function (err, res) {
               if (err) return done(err);
               agent1
                 .post('/user/checkPassword')
                 .send({userId: res.body._session.user.id})
-                .send({password: fixtures.users[0].password})
+                .send({password: 'pass'})
                 .expect(200)
                 .end(function (err, res) {
                   if (err) return done(err);
@@ -572,10 +635,10 @@ describe('derby-user', function () {
         });
 
         it('should return false for username', function (done) {
-          agent2
+          agent1
             .post('/user/checkPassword')
-            .send({usernameOrEmail: fixtures.users[0].username})
-            .send({password: 'nope'})
+            .send({usernameOrEmail: 'user1'})
+            .send({password: 'invalid'})
             .expect(200)
             .end(function (err, res) {
               if (err) return done(err);
@@ -588,10 +651,10 @@ describe('derby-user', function () {
         });
 
         it('should return false for email', function (done) {
-          agent2
+          agent1
             .post('/user/checkPassword')
-            .send({usernameOrEmail: fixtures.users[0].email})
-            .send({password: 'nope'})
+            .send({usernameOrEmail: 'user1@email.com'})
+            .send({password: 'invalid'})
             .expect(200)
             .end(function (err, res) {
               if (err) return done(err);
@@ -604,14 +667,15 @@ describe('derby-user', function () {
         });
 
         it('should return false for user id', function (done) {
-          agent2
+          agent1
             .get('/')
+            .expect(200)
             .end(function (err, res) {
               if (err) return done(err);
               agent1
                 .post('/user/checkPassword')
                 .send({userId: res.body._session.user.id})
-                .send({password: 'nope'})
+                .send({password: 'invalid'})
                 .expect(200)
                 .end(function (err, res) {
                   if (err) return done(err);
@@ -627,62 +691,49 @@ describe('derby-user', function () {
         it('should require username, email or user id', function (done) {
           agent1
             .post('/user/checkPassword')
-            .send({password: fixtures.users[0].password})
+            .send({password: 'pass'})
             .expect(422, done);
         });
 
         it('should require password', function (done) {
           agent1
             .post('/user/checkPassword')
-            .send({usernameOrEmail: fixtures.users[0].username})
+            .send({usernameOrEmail: 'user1'})
             .expect(422, done);
         });
 
         it('should not find username', function (done) {
           agent1
             .post('/user/checkPassword')
-            .send({usernameOrEmail: 'nope'})
-            .send({password: fixtures.users[0].password})
+            .send({usernameOrEmail: 'invalid'})
+            .send({password: 'pass'})
             .expect(404, done);
         });
 
-        it('should not find username', function (done) {
+        it('should not find email', function (done) {
           agent1
             .post('/user/checkPassword')
-            .send({usernameOrEmail: 'nope@nope.com'})
-            .send({password: fixtures.users[0].password})
+            .send({usernameOrEmail: 'invalid@email.com'})
+            .send({password: 'pass'})
             .expect(404, done);
         });
 
         it('should not find user id', function (done) {
           agent1
             .post('/user/checkPassword')
-            .send({userId: 'nope'})
-            .send({password: fixtures.users[0].password})
+            .send({userId: 'invalid'})
+            .send({password: 'pass'})
             .expect(404, done);
         });
       });
 
-      describe.skip('POST /changeEmail', function () {
-        before(function (done) {
-          agent2
-            .post('/user/signout')
-            .expect(200)
-            .end(function (err) {
-              if (err) return done(err);
-              agent1
-                .post('/user/signin')
-                .expect(200)
-                .send({usernameOrEmail: fixtures.users[1].email})
-                .send({password: fixtures.users[1].password})
-                .end(done);
-            });
-        });
+      describe('POST /changeEmail', function () {
+        before(setup);
 
         it('should require session', function (done) {
-          agent2
+          agent3
             .post('/user/changeEmail')
-            .send({email: fixtures.users[0].email})
+            .send({email: 'user3@email.com'})
             .expect(401, done);
         });
 
@@ -695,7 +746,7 @@ describe('derby-user', function () {
         it('should reject duplicate email', function (done) {
           agent1
             .post('/user/changeEmail')
-            .send({email: fixtures.users[1].email})
+            .send({email: 'user1@email.com'})
             .expect(409, done);
         });
 
@@ -711,7 +762,7 @@ describe('derby-user', function () {
                 if (err) return done(err);
                 agent1
                   .post('/user/changeEmail')
-                  .send({email: 'foo@bar.com'})
+                  .send({email: 'user3@email.com'})
                   .expect(200)
                   .end(function (err, res) {
                     if (err) return done(err);
@@ -722,7 +773,7 @@ describe('derby-user', function () {
                       var user2 = $user2.get();
                       user2.local.emails[0].value.should.be.a.String;
                       user2.local.emails[0].value.should.not.be.empty;
-                      user2.local.emails[0].value.should.not.equal($user1.get('local.emails.0.value'));
+                      user2.local.emails[0].value.should.equal('user3@email.com');
                       user2.local.emails[0].verified.should.be.a.Boolean;
                       user2.local.emails[0].verified.should.be.false;
                       user2.local.emails[0].token.should.be.an.Object;
@@ -741,49 +792,35 @@ describe('derby-user', function () {
         });
       });
 
-      describe.skip('POST /changePassword', function () {
-        before(function (done) {
-          agent1
-            .post('/user/signup')
-            .send({username: 'postchangepass'})
-            .send({email: 'post@changepass.com'})
-            .send({password: 'pass1'})
-            .expect(200)
-            .end(function (err) {
-              if (err) return done(err);
-              agent2
-                .post('/user/signout')
-                .expect(200)
-                .end(done);
-            });
-        });
+      describe('POST /changePassword', function () {
+        before(setup);
 
         it('should require session', function (done) {
-          agent2
+          agent3
             .post('/user/changePassword')
-            .send({currentPassword: fixtures.users[0].password})
-            .send({password: 'pass1'})
+            .send({currentPassword: 'pass'})
+            .send({password: 'pass2'})
             .expect(401, done);
         });
 
         it('should require password', function (done) {
           agent1
             .post('/user/changePassword')
-            .send({currentPassword: fixtures.users[0].password})
+            .send({currentPassword: 'pass'})
             .expect(422, done);
         });
 
         it('should require current password', function (done) {
           agent1
             .post('/user/changePassword')
-            .send({password: 'pass1'})
+            .send({password: 'pass2'})
             .expect(422, done);
         });
 
         it('should reject current password', function (done) {
           agent1
             .post('/user/changePassword')
-            .send({currentPassword: 'nope'})
+            .send({currentPassword: 'invalid'})
             .send({password: 'pass2'})
             .expect(401, done);
         });
@@ -800,7 +837,7 @@ describe('derby-user', function () {
                 if (err) return done(err);
                 agent1
                   .post('/user/changePassword')
-                  .send({currentPassword: 'pass1'})
+                  .send({currentPassword: 'pass'})
                   .send({password: 'pass2'})
                   .expect(200)
                   .end(function (err, res) {
@@ -820,148 +857,120 @@ describe('derby-user', function () {
             });
         });
       });
-    });
 
-    describe('GET /confirmEmail', function () {
-      before(function (done) {
-        agent1
-          .post('/user/signup')
-          .send({username: 'getconfirmemail'})
-          .send({email: 'get@confirmemail.com'})
-          .send({password: 'pass'})
-          .expect(200)
-          .end(function (err) {
-            if (err) return done(err);
-            agent2
-              .post('/user/signout')
-              .expect(200)
-              .end(done);
-          });
-      });
+      describe('GET /confirmEmail', function () {
+        before(setup);
 
-      it('should require session', function (done) {
-        agent2
-          .get('/user/confirmEmail')
-          .expect(401, done);
-      });
-
-      it('should confirm email', function (done) {
-        var emitted = false;
-
-        emitter.once('user.sendConfirmEmail', function (req, data) {
-          req.should.be.an('object');
-          data.should.be.an('object');
-          data.should.have.property('token');
-          data.token.should.be.a.String;
-          data.token.should.not.be.empty;
-          data.should.have.property('userId');
-          data.userId.should.be.a.String;
-          data.userId.should.not.be.empty;
-          emitted = true;
+        it('should require session', function (done) {
+          agent3
+            .get('/user/confirmEmail')
+            .expect(401, done);
         });
 
-        agent1
-          .get('/')
-          .end(function (err, res) {
-            if (err) return done(err);
-            var model = store.createModel();
-            var userId = res.body._session.user.id;
-            var $user1 = model.at('users.' + userId);
-            $user1.fetch(function (err) {
+        it('should confirm email', function (done) {
+          var emitted = false;
+
+          emitter.once('user.sendConfirmEmail', function (req, data) {
+            req.should.be.an('object');
+            data.should.be.an('object');
+            data.should.have.property('token');
+            data.token.should.be.a.String;
+            data.token.should.not.be.empty;
+            data.should.have.property('userId');
+            data.userId.should.be.a.String;
+            data.userId.should.not.be.empty;
+            emitted = true;
+          });
+
+          agent1
+            .get('/')
+            .end(function (err, res) {
               if (err) return done(err);
-              agent1
-                .get('/user/confirmEmail')
-                .expect(200)
-                .end(function (err, res) {
-                  if (err) return done(err);
-                  model = store.createModel();
-                  var $user2 = model.at('users.' + userId);
-                  $user2.fetch(function (err) {
+              var model = store.createModel();
+              var userId = res.body._session.user.id;
+              var $user1 = model.at('users.' + userId);
+              $user1.fetch(function (err) {
+                if (err) return done(err);
+                agent1
+                  .get('/user/confirmEmail')
+                  .expect(200)
+                  .end(function (err, res) {
                     if (err) return done(err);
-                    var user2 = $user2.get();
-                    user2.local.emails[0].token.should.be.an.Object;
-                    user2.local.emails[0].token.should.have.property('hash');
-                    user2.local.emails[0].token.hash.should.be.a.String;
-                    user2.local.emails[0].token.hash.should.not.equal($user1.get('local.emails.0.token.hash'));
-                    user2.local.emails[0].token.should.have.property('date');
-                    user2.local.emails[0].token.date.should.be.a.Number;
-                    user2.local.emails[0].token.date.should.be.above(0);
-                    user2.local.emails[0].token.date.should.not.equal($user1.get('local.emails.0.token.date'));
-                    emitted.should.be.true;
-                    done();
+                    model = store.createModel();
+                    var $user2 = model.at('users.' + userId);
+                    $user2.fetch(function (err) {
+                      if (err) return done(err);
+                      var user2 = $user2.get();
+                      user2.local.emails[0].token.should.be.an.Object;
+                      user2.local.emails[0].token.should.have.property('hash');
+                      user2.local.emails[0].token.hash.should.be.a.String;
+                      user2.local.emails[0].token.hash.should.not.equal($user1.get('local.emails.0.token.hash'));
+                      user2.local.emails[0].token.should.have.property('date');
+                      user2.local.emails[0].token.date.should.be.a.Number;
+                      user2.local.emails[0].token.date.should.be.above(0);
+                      user2.local.emails[0].token.date.should.not.equal($user1.get('local.emails.0.token.date'));
+                      emitted.should.be.true;
+                      done();
+                    });
                   });
-                });
+              });
             });
-          });
-      });
-    });
-
-    describe('POST /changeUsername', function () {
-      before(function (done) {
-        agent1
-          .post('/user/signup')
-          .send({username: 'postchangename1'})
-          .send({email: 'post@changename.com'})
-          .send({password: 'pass'})
-          .expect(200)
-          .end(function (err) {
-            if (err) return done(err);
-            agent2
-              .post('/user/signout')
-              .expect(200)
-              .end(done);
-          });
+        });
       });
 
-      it('should require session', function (done) {
-        agent2
-          .post('/user/changeUsername')
-          .send({username: 'postchangename1'})
-          .expect(401, done);
-      });
+      describe('POST /changeUsername', function () {
+        before(setup);
 
-      it('should require username', function (done) {
-        agent1
-          .post('/user/changeUsername')
-          .expect(422, done);
-      });
+        it('should require session', function (done) {
+          agent3
+            .post('/user/changeUsername')
+            .send({username: 'user3'})
+            .expect(401, done);
+        });
 
-      it('should reject username', function (done) {
-        agent1
-          .post('/user/changeUsername')
-          .send({username: 'postchangename1'})
-          .expect(409, done);
-      });
+        it('should require username', function (done) {
+          agent1
+            .post('/user/changeUsername')
+            .expect(422, done);
+        });
 
-      it('should change username', function (done) {
-        agent1
-          .get('/')
-          .end(function (err, res) {
-            if (err) return done(err);
-            var model = store.createModel();
-            var userId = res.body._session.user.id;
-            var $user1 = model.at('users.' + userId);
-            $user1.fetch(function (err) {
+        it('should reject username', function (done) {
+          agent1
+            .post('/user/changeUsername')
+            .send({username: 'user1'})
+            .expect(409, done);
+        });
+
+        it('should change username', function (done) {
+          agent1
+            .get('/')
+            .end(function (err, res) {
               if (err) return done(err);
-              agent1
-                .post('/user/changeUsername')
-                .send({username: 'postchangename2'})
-                .expect(200)
-                .end(function (err, res) {
-                  if (err) return done(err);
-                  model = store.createModel();
-                  var $user2 = model.at('users.' + userId);
-                  $user2.fetch(function (err) {
+              var model = store.createModel();
+              var userId = res.body._session.user.id;
+              var $user1 = model.at('users.' + userId);
+              $user1.fetch(function (err) {
+                if (err) return done(err);
+                agent1
+                  .post('/user/changeUsername')
+                  .send({username: 'user3'})
+                  .expect(200)
+                  .end(function (err, res) {
                     if (err) return done(err);
-                    var user2 = $user2.get();
-                    user2.local.username.should.be.a.String;
-                    user2.local.username.should.not.be.empty;
-                    user2.local.username.should.not.equal($user1.get('local.username'));
-                    done();
+                    model = store.createModel();
+                    var $user2 = model.at('users.' + userId);
+                    $user2.fetch(function (err) {
+                      if (err) return done(err);
+                      var user2 = $user2.get();
+                      user2.local.username.should.be.a.String;
+                      user2.local.username.should.not.be.empty;
+                      user2.local.username.should.equal('user3');
+                      done();
+                    });
                   });
-                });
+              });
             });
-          });
+        });
       });
     });
   });
