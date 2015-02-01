@@ -419,7 +419,7 @@ describe('derby-user', function () {
         it('should sign in with username', function (done) {
           agent1
             .post('/user/signin')
-            .send({usernameOrEmail: 'user1'})
+            .send({handle: 'user1'})
             .send({password: 'pass'})
             .expect(200)
             .end(function (err, res) {
@@ -453,7 +453,7 @@ describe('derby-user', function () {
         it('should sign in with email', function (done) {
           agent1
             .post('/user/signin')
-            .send({usernameOrEmail: 'user1@email.com'})
+            .send({handle: 'user1@email.com'})
             .send({password: 'pass'})
             .expect(200)
             .end(function (err, res) {
@@ -494,14 +494,14 @@ describe('derby-user', function () {
         it('should require a password', function (done) {
           agent1
             .post('/user/signin')
-            .send({usernameOrEmail: 'user1'})
+            .send({handle: 'user1'})
             .expect(422, done);
         });
 
         it('should not find username', function (done) {
           agent1
             .post('/user/signin')
-            .send({usernameOrEmail: 'missing'})
+            .send({handle: 'missing'})
             .send({password: 'pass'})
             .expect(404, done);
         });
@@ -509,7 +509,7 @@ describe('derby-user', function () {
         it('should not find email', function (done) {
           agent1
             .post('/user/signin')
-            .send({usernameOrEmail: 'missing@email.com'})
+            .send({handle: 'missing@email.com'})
             .send({password: 'pass'})
             .expect(404, done);
         });
@@ -517,7 +517,7 @@ describe('derby-user', function () {
         it('should reject password', function (done) {
           agent1
             .post('/user/signin')
-            .send({usernameOrEmail: 'user1'})
+            .send({handle: 'user1'})
             .send({password: 'invalid'})
             .expect(401, done);
         });
@@ -584,7 +584,7 @@ describe('derby-user', function () {
         it('should return true for username', function (done) {
           agent1
             .post('/user/checkPassword')
-            .send({usernameOrEmail: 'user1'})
+            .send({handle: 'user1'})
             .send({password: 'pass'})
             .expect(200)
             .end(function (err, res) {
@@ -600,7 +600,7 @@ describe('derby-user', function () {
         it('should return true for email', function (done) {
           agent1
             .post('/user/checkPassword')
-            .send({usernameOrEmail: 'user1@email.com'})
+            .send({handle: 'user1@email.com'})
             .send({password: 'pass'})
             .expect(200)
             .end(function (err, res) {
@@ -637,7 +637,7 @@ describe('derby-user', function () {
         it('should return false for username', function (done) {
           agent1
             .post('/user/checkPassword')
-            .send({usernameOrEmail: 'user1'})
+            .send({handle: 'user1'})
             .send({password: 'invalid'})
             .expect(200)
             .end(function (err, res) {
@@ -653,7 +653,7 @@ describe('derby-user', function () {
         it('should return false for email', function (done) {
           agent1
             .post('/user/checkPassword')
-            .send({usernameOrEmail: 'user1@email.com'})
+            .send({handle: 'user1@email.com'})
             .send({password: 'invalid'})
             .expect(200)
             .end(function (err, res) {
@@ -698,14 +698,14 @@ describe('derby-user', function () {
         it('should require password', function (done) {
           agent1
             .post('/user/checkPassword')
-            .send({usernameOrEmail: 'user1'})
+            .send({handle: 'user1'})
             .expect(422, done);
         });
 
         it('should not find username', function (done) {
           agent1
             .post('/user/checkPassword')
-            .send({usernameOrEmail: 'invalid'})
+            .send({handle: 'invalid'})
             .send({password: 'pass'})
             .expect(404, done);
         });
@@ -713,7 +713,7 @@ describe('derby-user', function () {
         it('should not find email', function (done) {
           agent1
             .post('/user/checkPassword')
-            .send({usernameOrEmail: 'invalid@email.com'})
+            .send({handle: 'invalid@email.com'})
             .send({password: 'pass'})
             .expect(404, done);
         });
@@ -1152,14 +1152,14 @@ describe('derby-user', function () {
         it('should not find username', function (done) {
           agent1
             .post('/user/forgotPassword')
-            .send({usernameOrEmail: 'invalid'})
+            .send({handle: 'invalid'})
             .expect(404, done);
         });
 
         it('should not find email', function (done) {
           agent1
             .post('/user/forgotPassword')
-            .send({usernameOrEmail: 'invalid@email.com'})
+            .send({handle: 'invalid@email.com'})
             .expect(404, done);
         });
 
@@ -1180,7 +1180,7 @@ describe('derby-user', function () {
 
           agent1
             .post('/user/forgotPassword')
-            .send({usernameOrEmail: 'user1'})
+            .send({handle: 'user1'})
             .expect(200)
             .end(function (err) {
               if (err) return done(err);
@@ -1206,7 +1206,7 @@ describe('derby-user', function () {
 
           agent1
             .post('/user/forgotPassword')
-            .send({usernameOrEmail: 'user1@email.com'})
+            .send({handle: 'user1@email.com'})
             .expect(200)
             .end(function (err) {
               if (err) return done(err);
@@ -1236,7 +1236,7 @@ describe('derby-user', function () {
 
                 agent1
                   .post('/user/forgotPassword')
-                  .send({usernameOrEmail: 'user1'})
+                  .send({handle: 'user1'})
                   .expect(200, done);
               });
           });
@@ -1277,7 +1277,7 @@ describe('derby-user', function () {
               if (err) return done(err);
               agent1
                 .post('/user/signin')
-                .send({usernameOrEmail: 'user1'})
+                .send({handle: 'user1'})
                 .send({password: 'pass2'})
                 .expect(200)
                 .end(function (err, res) {
