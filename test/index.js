@@ -986,6 +986,7 @@ describe('derby-user', function () {
       });
 
       describe('POST /confirmEmail', function () {
+        this.timeout(4000);
         var token = null;
 
         before(function (done) {
@@ -1054,6 +1055,7 @@ describe('derby-user', function () {
       });
 
       describe('GET /confirmEmail/:id/:token', function () {
+        this.timeout(4000);
         var token = null;
 
         before(function (done) {
@@ -1229,6 +1231,7 @@ describe('derby-user', function () {
       });
 
       describe('POST /resetPassword', function () {
+        this.timeout(4000);
         var userId = null;
         var token = null;
 
