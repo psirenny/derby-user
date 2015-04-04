@@ -3,7 +3,9 @@ var derby = require('derby');
 var events = require('events');
 var fixtures = require('./fixtures');
 var lib = require('..');
-var livedb = require('livedb-memory-mongo');
+var livedb = require('livedb');
+var livedbMongo = require('livedb-mongo');
+var MongoClient = require('mongodb').MongoClient;
 var request = require('supertest');
 var should = require('chai').should();
 
@@ -14,7 +16,9 @@ describe('derby-user', function () {
 
   describe('server', function () {
     var emitter = new events.EventEmitter();
-    var store = derby.createStore({db: new livedb()});
+    var db = livedbMongo('mongodb://localhost:27017/test');
+    var backend = livedb.client(db);
+    var store = derby.createStore({backend: backend});
     var opts1 = {emitter: emitter};
     var opts2 = {autoGenerate: false, emitter: emitter};
     var agent1 = null;
@@ -61,7 +65,7 @@ describe('derby-user', function () {
               $user.fetch(function (err) {
                 if (err) return done(err);
                 var user = $user.get();
-                (user === null).should.be.false;
+                (user == null).should.be.false;
                 user.should.be.an.Object;
                 user.should.have.property('id');
                 user.id.should.be.a.String;
@@ -94,30 +98,36 @@ describe('derby-user', function () {
         lib.server.routes.should.be.a.Function;
       });
 
-      function reset() {
-        store = derby.createStore({db: new livedb()});
-        agent1 = request.agent(fixtures.app(lib, derby, store, opts1));
-        agent2 = request.agent(fixtures.app(lib, derby, store, opts2));
-        agent3 = request.agent(fixtures.app(lib, derby, store, opts2));
+      function reset(done) {
+        MongoClient.connect('mongodb://localhost:27017/test',
+          function(err, db) {
+            agent1 = request.agent(fixtures.app(lib, derby, store, opts1));
+            agent2 = request.agent(fixtures.app(lib, derby, store, opts2));
+            agent3 = request.agent(fixtures.app(lib, derby, store, opts2));
+            db.dropDatabase(done);
+          }
+        );
       }
 
       function setup(done) {
-        reset();
-        agent1
-          .post('/user/signup')
-          .send({username: 'user1'})
-          .send({email: 'user1@email.com'})
-          .send({password: 'pass'})
-          .expect(200)
-          .end(function (err) {
-            if (err) return done(err);
-            agent2
-              .post('/user/signup')
-              .send({username: 'user2'})
-              .send({email: 'user2@email.com'})
-              .send({password: 'pass'})
-              .expect(201, done);
-          });
+        reset(function (err) {
+          if (err) return done(err);
+          agent1
+            .post('/user/signup')
+            .send({username: 'user1'})
+            .send({email: 'user1@email.com'})
+            .send({password: 'pass'})
+            .expect(200)
+            .end(function (err) {
+              if (err) return done(err);
+              agent2
+                .post('/user/signup')
+                .send({username: 'user2'})
+                .send({email: 'user2@email.com'})
+                .send({password: 'pass'})
+                .expect(201, done);
+            });
+        });
       }
 
       describe('POST /signup', function () {
@@ -174,7 +184,7 @@ describe('derby-user', function () {
                   $user.fetch(function (err) {
                     if (err) return done(err);
                     var user = $user.get();
-                    (user === null).should.be.false;
+                    (user == null).should.be.false;
                     user.should.be.an.Object;
                     user.should.have.property('id');
                     user.id.should.be.a.String;
@@ -525,13 +535,15 @@ describe('derby-user', function () {
 
       describe('GET /session', function () {
         before(function setup(done) {
-          reset();
-          agent1
-            .post('/user/signup')
-            .send({username: 'user1'})
-            .send({email: 'user1@email.com'})
-            .send({password: 'pass'})
-            .expect(200, done);
+          reset(function (err) {
+            if (err) return done(err);
+            agent1
+              .post('/user/signup')
+              .send({username: 'user1'})
+              .send({email: 'user1@email.com'})
+              .send({password: 'pass'})
+              .expect(200, done);
+          });
         });
 
         it('should return current session', function (done) {
