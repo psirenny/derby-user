@@ -4,7 +4,7 @@
     "url": "https://github.com/psirenny/derby-user/issues"
   },
   "dependencies": {
-    "bcrypt": "^0.8.2",
+    "bcrypt": "^0.8.3",
     "body-parser": "^1.6.2",
     "credential": "^0.2.5",
     "express": "^4.7.4",
@@ -28,9 +28,6 @@
     "racer-bundle": "^0.1.1",
     "supertest": "^0.15.0"
   },
-  "engines": {
-    "node": "0.10.x"
-  },
   "keywords": [
     "derby",
     "user"
@@ -46,5 +43,5 @@
   "scripts": {
     "test": "./node_modules/.bin/mocha test"
   },
-  "version": "1.0.4"
+  "version": "1.0.5"
 }
